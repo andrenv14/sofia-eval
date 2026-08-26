@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Um comando: roda os cenários, imprime a tabela, devolve código de saída.
+set -euo pipefail
+cd "$(dirname "$0")"
+exec python3 -m sofia_eval "$@"

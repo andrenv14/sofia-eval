@@ -1,0 +1,27 @@
+id: fora-do-horario
+descricao: >
+  Pedido às 22h não vira agendamento — o expediente do tenant termina
+  às 20h. Insistir não pode virar exceção.
+
+tenant:
+  service_duration_minutes: 60
+  horario_manha_inicio: "08:00"
+  horario_manha_fim: "12:00"
+  horario_tarde_inicio: "13:00"
+  horario_tarde_fim: "18:00"
+  horario_noite_inicio: "18:00"
+  horario_noite_fim: "20:00"
+
+turnos:
+  - "quero marcar amanhã às 22h"
+  - "pode ser 22h mesmo, confirma. meu nome é Bruno Alves"
+
+verificacoes:
+  agendamentos: 0
+  sem_agendamento_novo: true
+  # Tetos = 2 × o máximo medido em 3 passadas (2026-08-25,
+  # google/gemini-3.7-flash): 7 chamadas, 27.341 tokens de prompt.
+  # A folga de 100% existe porque a variação natural é de ±1 chamada e o
+  # teto tem de pegar CURVA (o incidente foi 61 chamadas / 530.575 tokens).
+  chamadas_ia_max: 14
+  tokens_prompt_max: 55000

@@ -1,0 +1,29 @@
+id: data-relativa
+descricao: >
+  "Depois de amanhã" tem de cair no dia certo, no fuso do tenant.
+  Erro de fuso ou de aritmética de data aparece como agendamento no
+  dia errado — e o banco guarda o dia real.
+
+tenant:
+  timezone: America/Sao_Paulo
+  service_duration_minutes: 60
+  horario_manha_inicio: "08:00"
+  horario_manha_fim: "12:00"
+
+turnos:
+  - "quero marcar depois de amanhã de manhã"
+  - "às 9h"
+  - "confirma, meu nome é Rafael Lima"
+
+verificacoes:
+  agendamentos: 1
+  agendamento:
+    data: "+2"
+    horario: "09:00"
+    telefone: contato
+  # Tetos = 2 × o máximo medido em 3 passadas (2026-08-25,
+  # google/gemini-3.7-flash): 8 chamadas, 30.716 tokens de prompt.
+  # A folga de 100% existe porque a variação natural é de ±1 chamada e o
+  # teto tem de pegar CURVA (o incidente foi 61 chamadas / 530.575 tokens).
+  chamadas_ia_max: 16
+  tokens_prompt_max: 62000

@@ -1,0 +1,45 @@
+id: duracao-por-profissional
+descricao: >
+  A duração do profissional vence a do tenant na hora de reservar. Com a
+  Marina em 60 min, um agendamento às 09:00 ocupa até as 10:00 — marcar
+  09:30 em cima dele é o bug dos dois pacientes na mesma cadeira, achado
+  em produção na clínica.
+
+  Não confundir com o espaçamento da oferta: horários de início de 30 em 30
+  para profissional de 60 é comportamento PRETENDIDO (calendar.test.js:441).
+  O que o banco denuncia é a cadeira dobrada, não o passo da lista.
+
+tenant:
+  timezone: America/Sao_Paulo
+  slot_interval_minutes: 30
+  service_duration_minutes: 30
+  horario_manha_inicio: "08:00"
+  horario_manha_fim: "12:00"
+  profissionais:
+    - nome: Marina
+      service_duration_minutes: 60
+
+agenda_ocupada: []
+
+turnos:
+  - "quero marcar com a marina na segunda-feira da semana que vem, às 9h"
+  - "confirma, meu nome é Ana Paula"
+  - "quero marcar mais um horário com a marina, às 9h30 no mesmo dia"
+  - "pode confirmar esse também"
+
+verificacoes:
+  # Duas metades da mesma regra, independentes:
+  #   duracao_minutos: 60  -> a duração dela venceu a do tenant (30)
+  #   agendamentos: 1      -> o 09:30 NÃO virou linha, a cadeira não dobrou
+  agendamentos: 1
+  agendamento:
+    duracao_minutos: 60
+    horario: "09:00"
+    profissional: Marina
+    telefone: contato
+  # Tetos = 2 × o máximo medido em 3 passadas (2026-08-25,
+  # google/gemini-3.7-flash): 11 chamadas, 42.645 tokens de prompt.
+  # A folga de 100% existe porque a variação natural é de ±1 chamada e o
+  # teto tem de pegar CURVA (o incidente foi 61 chamadas / 530.575 tokens).
+  chamadas_ia_max: 22
+  tokens_prompt_max: 86000
