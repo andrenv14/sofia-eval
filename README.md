@@ -51,7 +51,7 @@ Pré-requisitos:
 
 - Ubuntu no WSL, Node 22, PostgreSQL 18;
 - banco `sofia_test` com `db/schema.sql` **mais as 12 migrations que o schema
-  não cobre** (11 de xadrez + `2026-08-10d_prompts_painel`);
+  não cobre** (11 de um módulo desativado + `2026-08-10d_prompts_painel`);
 - `sofia-bot` clonado em `~/sofia-bot`, com a suíte verde;
 - Python 3.11+.
 
