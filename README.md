@@ -6,7 +6,7 @@ Se você abriu esperando testes unitários, está no repositório errado — e v
 achar que esta é uma suíte comum mal feita. Ela é outra categoria de
 verificação, de propósito.
 
-O [`sofia-bot`](https://github.com/) já tem 456 testes em Vitest que provam que
+O [`sofia-bot`](https://github.com/) já tem mais de 200 testes em Vitest que provam que
 o **encanamento** funciona: assinatura de webhook, dedup por `wamid`, buffer de
 mensagens, limites do loop-guard, isolamento entre tenants. Em todos eles a LLM
 é **simulada** — o que está sob teste é o código em volta do modelo.
@@ -52,7 +52,7 @@ Pré-requisitos:
 - Ubuntu no WSL, Node 22, PostgreSQL 18;
 - banco `sofia_test` com `db/schema.sql` **mais as 12 migrations que o schema
   não cobre** (11 de xadrez + `2026-08-10d_prompts_painel`);
-- `sofia-bot` clonado em `~/sofia-bot`, com a suíte em 456 verdes;
+- `sofia-bot` clonado em `~/sofia-bot`, com a suíte verde;
 - Python 3.11+.
 
 ## Isolamento — regras duras
