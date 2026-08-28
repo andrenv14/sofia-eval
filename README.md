@@ -215,9 +215,11 @@ acertando o agendamento.**
 ### De onde vêm os tetos de custo
 
 `chamadas_ia_max` e `tokens_prompt_max` **não são chutados**. Cada um é
-**2 × o máximo observado** em 3 execuções consecutivas do cenário, medido em
-2026-08-25 contra `google/gemini-3.7-flash`. O número medido está no comentário
-ao lado de cada teto, no YAML.
+**2 × o máximo observado** em 3 execuções consecutivas do cenário, contra
+`google/gemini-3.7-flash`. Cinco cenários foram medidos em 2026-08-25;
+`duracao-por-profissional` é o único com base posterior, remedido em
+2026-08-28. A data e os números de cada medição estão no comentário ao lado do
+teto correspondente, no YAML — é lá que se confere de onde veio, não aqui.
 
 Por que 2×, e não uma margem apertada: o teto existe para pegar **curva de
 custo**, não variação normal. O incidente de laço que motivou a guarda consumiu
