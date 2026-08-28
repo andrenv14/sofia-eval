@@ -285,35 +285,45 @@ Todos saem de bug real deste projeto ou de regra já documentada. Nada inventado
 | `data-relativa` | "depois de amanhã" cai no dia certo, no fuso do tenant |
 | `fora-do-horario` | pedido às 22h não vira agendamento, mesmo com insistência |
 
-### A suíte tem um vermelho conhecido
+### O vermelho conhecido fechou — e virou regressão
 
-`duracao-por-profissional` **falha de propósito**, e vai continuar falhando até
-o `sofia-bot` mudar. Não é cenário quebrado nem calibração errada: é bug real,
-reproduzido e registrado.
+`duracao-por-profissional` **passava a ser vermelho de propósito**. Não é mais:
+o bug que ele demonstrava foi corrigido, e desde 2026-08-28 o cenário passa.
+Ele muda de papel — deixa de exibir um bug aberto e passa a **guardar um bug
+fechado contra volta**.
 
-Resumo: `nome_profissional` é opcional no contrato de `criar_agendamento`. Quando
-o modelo o omite, o profissional chega `null`, a cascata de `resolveDuration`
-cai para a duração do tenant, e a reserva ocupa metade do tempo devido — o slot
-seguinte fica livre e vira um segundo agendamento. Dois pacientes na mesma
-cadeira, que é exatamente o bug que a correção de duração por profissional foi
-criada para eliminar. Proteção contornável por omissão de campo opcional não é
-proteção.
+O bug era este: `nome_profissional` era opcional no contrato de
+`criar_agendamento`. Quando o modelo o omitia, o profissional chegava `null`, a
+cascata de `resolveDuration` caía para a duração do tenant, e a reserva ocupava
+metade do tempo devido — o slot seguinte ficava livre e virava um segundo
+agendamento. Dois pacientes na mesma cadeira, que é exatamente o bug que a
+correção de duração por profissional foi criada para eliminar. Proteção
+contornável por omissão de campo opcional não era proteção.
 
-**Reproduz de forma intermitente: 2 de 6 execuções medidas em 2026-08-25.** Nas
-outras 4 o modelo atribuiu o profissional na primeira chamada e o resultado
-ficou correto. A cadeia completa, a evidência do banco e as direções de correção
-estão em `~/para-revisao/achado-profissional-omitido.md` — fora deste
-repositório, porque é achado do `sofia-bot`, não do eval.
+Reproduzia de forma intermitente: **2 de 6 execuções medidas em 2026-08-25** —
+nas outras 4 o modelo atribuía o profissional por conta própria e o resultado
+saía correto. Essa intermitência é o motivo de a correção não ter sido
+confiada ao modelo.
 
-**Consequência prática para quem usa isto como portão:** o código de saída deste
-cenário oscila entre 0 e 1 sem nada ter mudado. Verde aqui **não** significa que
-o bug foi corrigido — significa que naquela execução o modelo lembrou de
-preencher o campo. Enquanto o achado estiver aberto, trate este cenário como
-vermelho conhecido, e trate qualquer OUTRO vermelho como novidade que merece
-investigação.
+**O que fechou:** as quatro camadas de
+`docs/features/nome-profissional-obrigatorio.md`, no `sofia-bot`, em produção
+desde 2026-08-28 (merge `cac042b`). As camadas 1 e 2 instruem, a 3 valida no
+`executeTool`, e a 4 é uma trigger `BEFORE INSERT` em `appointments` que recusa
+`professional_id` nulo em tenant com profissional ativo — a única que não
+depende de o modelo cooperar. A cadeia completa e a evidência do banco estão em
+`~/para-revisao/achado-profissional-omitido.md`, fora deste repositório, porque
+é achado do `sofia-bot`, não do eval.
 
-Deixá-lo vermelho é deliberado. Vermelho honesto vale mais que verde forçado:
-afrouxar a verificação até ele passar esconderia um bug que chega ao paciente.
+**Consequência prática para quem usa isto como portão:** o cenário agora é
+verde estável, e não mais um código de saída que oscila entre 0 e 1 sem nada ter
+mudado. Vermelho aqui voltou a significar o que significa nos outros cinco —
+**novidade que merece investigação**. Não há mais exceção a memorizar ao ler a
+tabela.
+
+O que continua valendo do princípio antigo: vermelho honesto vale mais que verde
+forçado. O cenário ficou verde porque o `sofia-bot` mudou, não porque a
+verificação foi afrouxada — `agendamentos: 1` e `duracao_minutos: 60` seguem
+exatamente como estavam quando o cenário falhava.
 
 ## Fluxo de uma execução
 
