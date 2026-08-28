@@ -42,6 +42,9 @@ class Resultado:
     custo: dict = field(default_factory=dict)
     segundos: float = 0.0
     resposta: str = None
+    # Caminho do JSON com o estado do banco, preenchido só quando o cenário
+    # falha — ver evidencia.capturar().
+    evidencia: str = None
 
     @property
     def ok(self):
@@ -87,6 +90,8 @@ def imprimir(resultados: list) -> int:
                 if len(texto) > 220:
                     texto = texto[:217] + "..."
                 print(cinza(f'    última resposta da assistente: "{texto}"'))
+            if r.evidencia:
+                print(cinza(f"    estado do banco: {r.evidencia}"))
             print()
 
     passaram = sum(1 for r in resultados if r.ok)

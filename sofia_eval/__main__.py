@@ -11,6 +11,7 @@ from . import (
     cenario as mod_cenario,
     config,
     datas,
+    evidencia,
     google_calendar,
     relatorio,
     tenant as mod_tenant,
@@ -125,7 +126,12 @@ def rodar(conn, cliente, calendario, cfg, c) -> relatorio.Resultado:
             agenda.semear(conn, calendario, c, tenant)
         except agenda.ErroDeSemeadura as err:
             print(relatorio.ERRO)
-            return relatorio.Resultado(c.id, relatorio.ERRO, [str(err)], {}, time.monotonic() - comeco)
+            # Sai pelo `finally` como qualquer outro caminho, para a evidência
+            # ser capturada também quando a semeadura é que quebrou.
+            resultado = relatorio.Resultado(
+                c.id, relatorio.ERRO, [str(err)], {}, time.monotonic() - comeco
+            )
+            return resultado
 
         ids_antes = {a["id"] for a in banco.agendamentos_ativos(conn, tenant["id"])}
 
@@ -151,6 +157,11 @@ def rodar(conn, cliente, calendario, cfg, c) -> relatorio.Resultado:
                 None if not falhas else banco.resposta_da_assistente(conn, tenant["id"], c.contato),
             )
     finally:
+        # Evidência ANTES de qualquer limpeza: o TRUNCATE da entrada do próximo
+        # cenário leva junto o estado que explica a falha, e é autocommit — não
+        # há como voltar atrás depois. Só no caminho de falha, e nunca fatal.
+        if resultado is not None and resultado.veredito != relatorio.PASSOU:
+            resultado.evidencia = evidencia.capturar(conn, tenant, c, resultado)
         # Depois: mesmo se o cenário explodiu, a agenda volta limpa. Falha aqui
         # sobe e derruba a execução — nunca segue em silêncio.
         calendario.limpar(hoje, cfg.janela_limpeza_dias)
