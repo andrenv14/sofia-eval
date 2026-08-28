@@ -141,6 +141,26 @@ minutos e custa tokens de verdade.
 
 É o `0`/`1` que permite usar isto como portão antes de lançar cliente.
 
+### Evidência de falha
+
+Cenário com veredito `FALHOU` ou `ERRO` tem o estado do banco salvo em
+`~/para-revisao/eval-<cenario>-<timestamp>.json` **antes de qualquer limpeza** —
+o `TRUNCATE` da entrada do cenário seguinte é autocommit, e sem isto não sobra
+nada para inspecionar. Vão para o arquivo as linhas de `appointments` e
+`professionals` do tenant, o histórico de `messages` em ordem cronológica e o
+`ai_usage` agregado. O relatório imprime o caminho junto do motivo da falha.
+
+Cenário que passa **não escreve nada**. Falha na captura só avisa e segue: não
+muda veredito nem código de saída. O arquivo **não carrega credencial nenhuma** —
+as consultas listam coluna a coluna, nunca `SELECT *`, então
+`professionals.google_refresh_token` e a linha de `tenants` (que guarda
+`whatsapp_access_token`, `google_client_secret` e `google_refresh_token`) ficam
+de fora.
+
+> **Não commite esses JSON.** Eles contêm o conteúdo das conversas do cenário, e
+> este repositório é público. Por isso o destino é `~/para-revisao/`, fora do
+> repositório — a mesma pasta dos achados que não moram aqui.
+
 ## Formato dos cenários
 
 Um arquivo YAML por cenário, em `cenarios/`. **Acrescentar cenário não exige
