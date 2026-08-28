@@ -37,9 +37,20 @@ verificacoes:
     horario: "09:00"
     profissional: Marina
     telefone: contato
-  # Tetos = 2 × o máximo medido em 3 passadas (2026-08-25,
-  # google/gemini-3.7-flash): 11 chamadas, 42.645 tokens de prompt.
+  # Tetos = 2 × o máximo medido em 3 passadas (2026-08-28,
+  # google/gemini-3.7-flash): 12/50.446, 13/56.657, 13/55.630 — máximo de
+  # 13 chamadas e 56.657 tokens de prompt. Valores exatos do dobro, sem
+  # arredondar: número redondo esconde de onde veio.
+  #
+  # A base anterior (11 chamadas / 42.645 tokens, medida em 2026-08-25) foi
+  # tirada do comportamento COM o bug do nome_profissional: o modelo omitia
+  # o campo e resolvia a conversa por um caminho mais barato. Os tetos de
+  # 22/86.000 estavam, portanto, ancorados no lugar errado — folga contra um
+  # custo que o cenário corrigido não tem mais. Com as quatro camadas em pé,
+  # o custo típico subiu de ~11 para ~13 chamadas, e a remedição desfaz a
+  # âncora.
+  #
   # A folga de 100% existe porque a variação natural é de ±1 chamada e o
   # teto tem de pegar CURVA (o incidente foi 61 chamadas / 530.575 tokens).
-  chamadas_ia_max: 22
-  tokens_prompt_max: 86000
+  chamadas_ia_max: 26
+  tokens_prompt_max: 113314
