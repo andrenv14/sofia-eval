@@ -161,6 +161,34 @@ de fora.
 > este repositório é público. Por isso o destino é `~/para-revisao/`, fora do
 > repositório — a mesma pasta dos achados que não moram aqui.
 
+## Relatório HTML
+
+Toda execução escreve, além da tabela, um arquivo HTML estático e
+auto-contido em `~/para-revisao/relatorio-eval-<timestamp>.html` — mesma
+pasta e mesmo motivo do JSON de evidência acima: o relatório carrega o
+conteúdo das conversas, e este repositório é público. **Não commite esse
+arquivo.**
+
+Isto é o degrau 1 do item 8 de `docs/contexto/fila.md` no `sofia-bot`
+("saída visual do eval"): a tabela do terminal só mostra o veredito, e o eval
+julga pelo efeito no banco — não se vê o que a Sofia respondeu, mesmo com o
+texto gravado em `messages`. O relatório é **arquivo escrito em disco**, não
+servidor nem interface: zero dependência nova (só `html.escape` e f-strings
+da biblioteca padrão), zero JS obrigatório, e não muda o julgamento de
+nenhum cenário — só lê o que a tabela do terminal já calculou.
+
+Por cenário, o relatório traz: id e descrição; a conversa turno a turno
+(cliente × Sofia, lida de `messages`); cada verificação com esperado ×
+obtido × veredito, **inclusive as que passaram** (a tabela do terminal só
+grava as que falham); chamadas de IA e tokens; e o veredito. No topo: SHA do
+`sofia-eval` e do `sofia-bot`, data/hora, modelo(s) e os totais da rodada.
+
+**Ferramentas chamadas ficam fora desta v1 do relatório.** O banco não
+guarda essa informação — `pushTurn` grava só as mensagens finais de
+user/assistant, `ai_usage` não tem coluna de nome de ferramenta, e a lista
+existe apenas em memória durante o processamento no `sofia-bot`. Sem fonte
+no banco, o relatório diz isso explicitamente em vez de inventar uma.
+
 ## Formato dos cenários
 
 Um arquivo YAML por cenário, em `cenarios/`. **Acrescentar cenário não exige
@@ -392,9 +420,13 @@ E se o webhook devolver `401`, é `WHATSAPP_APP_SECRET` diferente entre os dois
 - Julgamento por conteúdo de texto, e uso de outro modelo como juiz.
 - Teste de carga e cenários de laço bot-a-bot — outra categoria, outra ferramenta.
 - Qualquer coisa que rode na VPS.
-- Interface, servidor, API, contêiner.
+- Servidor, API, contêiner. (O relatório HTML é **arquivo escrito em disco**,
+  não interface — não contraria este limite. Ver "Relatório HTML" acima.)
 - Executar contra o banco de produção, sob qualquer condição.
+- Ferramentas chamadas pelo modelo, no relatório HTML — o banco não guarda
+  essa informação (ver "Relatório HTML" acima).
 
 ## Dependências
 
-`requests`, `PyYAML`, `psycopg` e biblioteca padrão. Nada além disso.
+`requests`, `PyYAML`, `psycopg` e biblioteca padrão. Nada além disso — o
+relatório HTML usa só `html.escape` e f-strings da biblioteca padrão.
