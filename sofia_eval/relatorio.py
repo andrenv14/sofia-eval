@@ -1,7 +1,11 @@
-"""Saída: uma tabela no terminal e um código de saída. Nada mais.
+"""Saída: uma tabela no terminal e um código de saída.
 
-Sem gráfico, sem HTML, sem arquivo — a spec é explícita. O que importa é 0 se
-tudo passou, 1 se algo falhou, pra servir de portão antes de lançar cliente.
+O que decide o portão é só isto: 0 se tudo passou, 1 se algo falhou. Arquivo
+em disco não muda o julgamento nem o código de saída — por isso o relatório
+HTML (item 8 de docs/contexto/fila.md, no sofia-bot) mora em `relatorio_html`,
+módulo à parte, e só lê o que este aqui já calculou. "Não é framework, não é
+servidor, não tem interface" continua valendo: arquivo escrito em disco não é
+interface.
 """
 
 import sys
@@ -45,6 +49,11 @@ class Resultado:
     # Caminho do JSON com o estado do banco, preenchido só quando o cenário
     # falha — ver evidencia.capturar().
     evidencia: str = None
+    # Checagens estruturadas (verificacoes.aplicar) + transcript + modelos —
+    # só para o relatório HTML. None quando o cenário nem chegou a rodar
+    # verificação (ex.: erro de semeadura) ou a coleta falhou; nunca usado
+    # pelo veredito nem pelo exit code. Ver relatorio_html.gerar().
+    dossie: dict = None
 
     @property
     def ok(self):
