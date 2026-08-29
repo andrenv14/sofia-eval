@@ -63,6 +63,9 @@ class Config:
     carencia_status_s: float
     janela_limpeza_dias: int
     timeout_http_s: float
+    # Diretório do sofia-bot (pai do .env apontado por SOFIA_BOT_ENV) — usado
+    # só pelo relatório HTML, para ler o SHA do sofia-bot no cabeçalho.
+    sofia_bot_dir: Path
 
 
 def carregar() -> Config:
@@ -120,6 +123,7 @@ def carregar() -> Config:
         carencia_status_s=float(pega("EVAL_CARENCIA_STATUS_S", "8")),
         janela_limpeza_dias=int(pega("EVAL_JANELA_LIMPEZA_DIAS", "45")),
         timeout_http_s=float(pega("EVAL_TIMEOUT_HTTP_S", "30")),
+        sofia_bot_dir=Path(caminho_bot).expanduser().parent,
     )
 
 

@@ -83,3 +83,38 @@ def resposta_da_assistente(conn, tenant_id: int, telefone: str):
         (tenant_id, telefone),
     ).fetchone()
     return linha["content"] if linha else None
+
+
+def transcricao(conn, tenant_id: int, telefone: str) -> list:
+    """A conversa inteira do cenário, em ordem cronológica — não entra no
+    julgamento (v1 não julga por conteúdo); é o dado que o relatório HTML usa
+    para mostrar turno a turno o que o cliente mandou e o que a Sofia
+    respondeu. Lida com a conexão ainda viva, antes do TRUNCATE do próximo
+    cenário apagar `messages` — mesma janela de tempo de `evidencia.capturar`."""
+    return conn.execute(
+        """
+        SELECT id, role, content, created_at FROM messages
+         WHERE tenant_id = %s AND contact_phone = %s
+         ORDER BY id
+        """,
+        (tenant_id, telefone),
+    ).fetchall()
+
+
+def modelos(conn, tenant_id: int) -> list:
+    """Quebra do custo por `model`, direto do banco — não do `.env`, porque o
+    que importa é o modelo que de fato atendeu."""
+    return conn.execute(
+        """
+        SELECT model,
+               COALESCE(SUM(chamadas_ia), 0)       AS chamadas_ia,
+               COALESCE(SUM(prompt_tokens), 0)     AS prompt_tokens,
+               COALESCE(SUM(completion_tokens), 0) AS completion_tokens,
+               COALESCE(SUM(total_tokens), 0)      AS total_tokens
+          FROM ai_usage
+         WHERE tenant_id = %s
+         GROUP BY model
+         ORDER BY model
+        """,
+        (tenant_id,),
+    ).fetchall()

@@ -10,68 +10,104 @@ from zoneinfo import ZoneInfo
 from . import banco, datas
 
 
+def _checagem(chave, esperado, obtido, ok) -> dict:
+    """Uma verificação, estruturada — esperado × obtido × veredito.
+
+    Existe ao lado de `falhas` (que já formata a mesma coisa em texto) porque
+    `falhas` só registra o que reprovou: verificação que passa não deixa
+    rastro nela. `checagens` traz as duas, e é o que o relatório HTML usa para
+    mostrar cada verificação, não só as que falharam."""
+    return {"chave": chave, "esperado": esperado, "obtido": obtido, "ok": ok}
+
+
 def aplicar(conn, tenant, cenario, ids_antes) -> tuple:
-    """Devolve (falhas, custo). `falhas` vazia = cenário passou."""
+    """Devolve (falhas, custo, checagens). `falhas` vazia = cenário passou."""
     v = cenario.verificacoes
     tz = ZoneInfo(tenant["timezone"])
     ativos = banco.agendamentos_ativos(conn, tenant["id"])
     novos = [a for a in ativos if a["id"] not in ids_antes]
     custo = banco.custo(conn, tenant["id"])
     falhas = []
+    checagens = []
 
     if "agendamentos" in v:
-        if len(ativos) != v["agendamentos"]:
+        ok = len(ativos) == v["agendamentos"]
+        checagens.append(_checagem("agendamentos", v["agendamentos"], len(ativos), ok))
+        if not ok:
             falhas.append(
                 f"agendamentos: esperado {v['agendamentos']}, obtido {len(ativos)}"
                 + _resumo(ativos, tz)
             )
 
     if "sem_agendamento_novo" in v:
-        if v["sem_agendamento_novo"] and novos:
+        esperado = v["sem_agendamento_novo"]
+        obtido = not novos
+        ok = esperado == obtido
+        checagens.append(_checagem("sem_agendamento_novo", esperado, obtido, ok))
+        if esperado and novos:
             falhas.append(
                 f"sem_agendamento_novo: esperado nenhum agendamento novo, obtido {len(novos)}"
                 + _resumo(novos, tz)
             )
-        elif not v["sem_agendamento_novo"] and not novos:
+        elif not esperado and not novos:
             falhas.append("sem_agendamento_novo: false exige um agendamento novo, obtido nenhum")
 
     if "agendamento" in v:
-        if len(novos) != 1:
+        ok = len(novos) == 1
+        if not ok:
+            checagens.append(
+                _checagem("agendamento", "exatamente 1 agendamento novo", len(novos), ok)
+            )
             falhas.append(
                 f"agendamento: as checagens de linha exigem exatamente 1 agendamento novo, "
                 f"obtido {len(novos)}" + _resumo(novos, tz)
             )
         else:
-            falhas.extend(_checar_linha(v["agendamento"], novos[0], cenario, tenant, tz))
+            falhas_linha, checagens_linha = _checar_linha(
+                v["agendamento"], novos[0], cenario, tenant, tz
+            )
+            falhas.extend(falhas_linha)
+            checagens.extend(checagens_linha)
 
-    if "chamadas_ia_max" in v and custo["chamadas_ia"] > v["chamadas_ia_max"]:
-        falhas.append(
-            f"chamadas_ia_max: teto {v['chamadas_ia_max']}, obtido {custo['chamadas_ia']} "
-            "chamadas de IA (guarda de custo)"
-        )
+    if "chamadas_ia_max" in v:
+        ok = custo["chamadas_ia"] <= v["chamadas_ia_max"]
+        checagens.append(_checagem("chamadas_ia_max", v["chamadas_ia_max"], custo["chamadas_ia"], ok))
+        if not ok:
+            falhas.append(
+                f"chamadas_ia_max: teto {v['chamadas_ia_max']}, obtido {custo['chamadas_ia']} "
+                "chamadas de IA (guarda de custo)"
+            )
 
-    if "tokens_prompt_max" in v and custo["prompt_tokens"] > v["tokens_prompt_max"]:
-        falhas.append(
-            f"tokens_prompt_max: teto {v['tokens_prompt_max']}, obtido {custo['prompt_tokens']} "
-            "tokens de prompt (guarda de custo)"
-        )
+    if "tokens_prompt_max" in v:
+        ok = custo["prompt_tokens"] <= v["tokens_prompt_max"]
+        checagens.append(_checagem("tokens_prompt_max", v["tokens_prompt_max"], custo["prompt_tokens"], ok))
+        if not ok:
+            falhas.append(
+                f"tokens_prompt_max: teto {v['tokens_prompt_max']}, obtido {custo['prompt_tokens']} "
+                "tokens de prompt (guarda de custo)"
+            )
 
-    return falhas, custo
+    return falhas, custo, checagens
 
 
-def _checar_linha(esperado, linha, cenario, tenant, tz) -> list:
+def _checar_linha(esperado, linha, cenario, tenant, tz) -> tuple:
     falhas = []
+    checagens = []
 
     if "duracao_minutos" in esperado:
         obtido = int((linha["fim"] - linha["inicio"]).total_seconds() // 60)
-        if obtido != esperado["duracao_minutos"]:
+        ok = obtido == esperado["duracao_minutos"]
+        checagens.append(_checagem("agendamento.duracao_minutos", esperado["duracao_minutos"], obtido, ok))
+        if not ok:
             falhas.append(
                 f"agendamento.duracao_minutos: esperado {esperado['duracao_minutos']}, obtido {obtido}"
             )
 
     if "profissional" in esperado:
         obtido = linha["profissional"]
-        if (obtido or "").strip().casefold() != esperado["profissional"].strip().casefold():
+        ok = (obtido or "").strip().casefold() == esperado["profissional"].strip().casefold()
+        checagens.append(_checagem("agendamento.profissional", esperado["profissional"], obtido, ok))
+        if not ok:
             falhas.append(
                 f"agendamento.profissional: esperado {esperado['profissional']!r}, obtido {obtido!r}"
             )
@@ -79,14 +115,19 @@ def _checar_linha(esperado, linha, cenario, tenant, tz) -> list:
     if "telefone" in esperado:
         # `contato` = o telefone que mandou as mensagens neste cenário.
         alvo = cenario.contato if esperado["telefone"] == "contato" else esperado["telefone"]
-        if linha["telefone"] != alvo:
-            rotulo = f"contato ({alvo})" if esperado["telefone"] == "contato" else alvo
-            falhas.append(f"agendamento.telefone: esperado {rotulo}, obtido {linha['telefone']}")
+        obtido = linha["telefone"]
+        ok = obtido == alvo
+        rotulo = f"contato ({alvo})" if esperado["telefone"] == "contato" else alvo
+        checagens.append(_checagem("agendamento.telefone", rotulo, obtido, ok))
+        if not ok:
+            falhas.append(f"agendamento.telefone: esperado {rotulo}, obtido {obtido}")
 
     if "data" in esperado:
         alvo = datas.resolver(esperado["data"], tenant["timezone"])
         obtida = linha["inicio"].astimezone(tz).date()
-        if obtida != alvo:
+        ok = obtida == alvo
+        checagens.append(_checagem("agendamento.data", alvo.isoformat(), obtida.isoformat(), ok))
+        if not ok:
             falhas.append(
                 f"agendamento.data: esperado {alvo.isoformat()}, obtido {obtida.isoformat()} "
                 f"(fuso {tenant['timezone']})"
@@ -94,10 +135,12 @@ def _checar_linha(esperado, linha, cenario, tenant, tz) -> list:
 
     if "horario" in esperado:
         obtido = linha["inicio"].astimezone(tz).strftime("%H:%M")
-        if obtido != esperado["horario"]:
+        ok = obtido == esperado["horario"]
+        checagens.append(_checagem("agendamento.horario", esperado["horario"], obtido, ok))
+        if not ok:
             falhas.append(f"agendamento.horario: esperado {esperado['horario']}, obtido {obtido}")
 
-    return falhas
+    return falhas, checagens
 
 
 def _resumo(linhas, tz) -> str:

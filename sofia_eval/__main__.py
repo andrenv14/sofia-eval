@@ -14,6 +14,7 @@ from . import (
     evidencia,
     google_calendar,
     relatorio,
+    relatorio_html,
     tenant as mod_tenant,
     turnos,
     verificacoes,
@@ -104,6 +105,10 @@ def main() -> int:
         mod_tenant.limpar(conn)
 
     codigo = relatorio.imprimir(resultados) if resultados else 1
+    if resultados:
+        caminho_html = relatorio_html.gerar(resultados, cfg)
+        if caminho_html:
+            print(relatorio.cinza(f"relatório HTML: {caminho_html}"))
     if fatal:
         print(f"\n\033[31mexecução interrompida — {fatal}\033[0m\n", file=sys.stderr)
         return 2
@@ -121,6 +126,7 @@ def rodar(conn, cliente, calendario, cfg, c) -> relatorio.Resultado:
     tenant = mod_tenant.criar(conn, c, cfg)
 
     resultado = None
+    checagens = []
     try:
         try:
             agenda.semear(conn, calendario, c, tenant)
@@ -147,7 +153,7 @@ def rodar(conn, cliente, calendario, cfg, c) -> relatorio.Resultado:
                 banco.resposta_da_assistente(conn, tenant["id"], c.contato),
             )
         else:
-            falhas, custo = verificacoes.aplicar(conn, tenant, c, ids_antes)
+            falhas, custo, checagens = verificacoes.aplicar(conn, tenant, c, ids_antes)
             resultado = relatorio.Resultado(
                 c.id,
                 relatorio.PASSOU if not falhas else relatorio.FALHOU,
@@ -162,6 +168,13 @@ def rodar(conn, cliente, calendario, cfg, c) -> relatorio.Resultado:
         # há como voltar atrás depois. Só no caminho de falha, e nunca fatal.
         if resultado is not None and resultado.veredito != relatorio.PASSOU:
             resultado.evidencia = evidencia.capturar(conn, tenant, c, resultado)
+        # Dossiê do relatório HTML: mesma janela de tempo e mesmo motivo da
+        # evidência acima — a conexão ainda está viva e `messages`/`ai_usage`
+        # ainda não foram apagados pelo cenário seguinte. Ao contrário da
+        # evidência, roda para TODOS os veredictos (o relatório mostra também
+        # os que passaram); nunca fatal.
+        if resultado is not None:
+            resultado.dossie = relatorio_html.coletar_dossie(conn, tenant, c, checagens)
         # Depois: mesmo se o cenário explodiu, a agenda volta limpa. Falha aqui
         # sobe e derruba a execução — nunca segue em silêncio.
         calendario.limpar(hoje, cfg.janela_limpeza_dias)
