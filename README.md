@@ -6,9 +6,12 @@ Se você abriu esperando testes unitários, está no repositório errado — e v
 achar que esta é uma suíte comum mal feita. Ela é outra categoria de
 verificação, de propósito.
 
-O [`sofia-bot`](https://github.com/andrenv14/sofia-vitrine) já tem mais de 200 testes em Vitest que provam que
-o **encanamento** funciona: assinatura de webhook, dedup por `wamid`, buffer de
-mensagens, limites do loop-guard, isolamento entre tenants. Em todos eles a LLM
+O `sofia-bot` (código privado — a arquitetura e os trechos que valem leitura
+estão no repositório irmão
+[`sofia-vitrine`](https://github.com/andrenv14/sofia-vitrine)) tem 368 testes
+em Vitest que provam que o **encanamento** funciona: assinatura de webhook,
+dedup por `wamid`, buffer de mensagens, limites do loop-guard, fila
+persistente. Em todos eles a LLM
 é **simulada** — o que está sob teste é o código em volta do modelo.
 
 Nenhum deles pega a categoria de bug que mais escapou neste projeto:
