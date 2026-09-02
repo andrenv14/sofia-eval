@@ -30,6 +30,12 @@ TENANT = {
     "bot_name": (str, False),
     "business_name": (str, False),
     "system_prompt_extra": (str, False),
+    # O modelo sob avaliação é AMBIENTE por padrão (herda o .env do sofia-bot),
+    # não declarado — achado da guia em 02/09. Declarar aqui só quando o
+    # cenário tem teto calibrado contra um modelo específico; sem isso, o
+    # tenant nasce com `openrouter_model` NULL (tenant.py PADRAO) e o
+    # comportamento de hoje não muda.
+    "openrouter_model": (str, False),
     "service_duration_minutes": (int, False),
     "slot_interval_minutes": (int, False),
     "working_days": (str, False),
@@ -67,6 +73,28 @@ VERIFICACOES = {
     "sem_agendamento_novo": (bool, False),
     "chamadas_ia_max": (int, False),
     "tokens_prompt_max": (int, False),
+    # Guarda de COMPORTAMENTO (desengajar), não de custo — teto de linhas
+    # `messages` com role='assistant' para o contato do cenário. Existe para
+    # o achado de tráfego real "bot-a-bot: detectar não basta, tem de
+    # desengajar" (31/08): o loop-guard é backstop quantitativo (35 msgs/120s,
+    # 60/h) e não pega uma troca de 4 mensagens em 50s. A consulta já existia
+    # sem uso — banco.turnos_da_assistente.
+    "respostas_assistente_max": (int, False),
+    # Estado de linhas ESPECÍFICAS de `appointments`, identificadas por
+    # (telefone, data, horario) — ao contrário de `agendamentos` (agregado) e
+    # `agendamento` (só a mais nova), afere "a linha CERTA mudou", não só "o
+    # total mudou". Existe para cenários com mais de um agendamento em jogo
+    # (ex.: cancelamento correto sem mexer no de terceiro) — a mesma
+    # categoria de bug que `nome_profissional` e linha órfã, onde o total
+    # batia e a linha errada é que estava errada.
+    "agendamento_status": (list, False),
+}
+
+AGENDAMENTO_STATUS_ITEM = {
+    "telefone": (str, True),
+    "data": ((str, int), True),
+    "horario": (str, True),
+    "status": (str, True),
 }
 
 AGENDAMENTO = {
@@ -160,6 +188,19 @@ def carregar(caminho: Path) -> Cenario:
         _validar(verificacoes["agendamento"], AGENDAMENTO, caminho, "verificacoes.agendamento")
         if not verificacoes["agendamento"]:
             raise ErroDeCenario(f"{caminho}: `verificacoes.agendamento` está vazio")
+
+    if "agendamento_status" in verificacoes:
+        itens = verificacoes["agendamento_status"]
+        if not itens:
+            raise ErroDeCenario(f"{caminho}: `verificacoes.agendamento_status` está vazio")
+        for i, item in enumerate(itens):
+            _validar(item, AGENDAMENTO_STATUS_ITEM, caminho, f"verificacoes.agendamento_status[{i}]")
+            if item["status"] not in ("ativo", "cancelado"):
+                raise ErroDeCenario(
+                    f"{caminho}: `verificacoes.agendamento_status[{i}].status` deveria ser "
+                    f"'ativo' ou 'cancelado' (mesmo CHECK de appointments.status no schema), "
+                    f"veio {item['status']!r}"
+                )
 
     turnos = bruto["turnos"]
     if not turnos:

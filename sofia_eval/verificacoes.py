@@ -87,7 +87,50 @@ def aplicar(conn, tenant, cenario, ids_antes) -> tuple:
                 "tokens de prompt (guarda de custo)"
             )
 
+    if "respostas_assistente_max" in v:
+        obtido = banco.turnos_da_assistente(conn, tenant["id"], cenario.contato)
+        ok = obtido <= v["respostas_assistente_max"]
+        checagens.append(_checagem("respostas_assistente_max", v["respostas_assistente_max"], obtido, ok))
+        if not ok:
+            falhas.append(
+                f"respostas_assistente_max: teto {v['respostas_assistente_max']}, obtido {obtido} "
+                "respostas da assistente (guarda de comportamento — desengajar)"
+            )
+
+    if "agendamento_status" in v:
+        falhas_status, checagens_status = _checar_status(conn, v["agendamento_status"], cenario, tenant)
+        falhas.extend(falhas_status)
+        checagens.extend(checagens_status)
+
     return falhas, custo, checagens
+
+
+def _checar_status(conn, itens, cenario, tenant) -> tuple:
+    falhas = []
+    checagens = []
+    for i, item in enumerate(itens):
+        chave = f"agendamento_status[{i}]"
+        alvo = cenario.contato if item["telefone"] == "contato" else item["telefone"]
+        rotulo_tel = f"contato ({alvo})" if item["telefone"] == "contato" else alvo
+        dia = datas.resolver(item["data"], tenant["timezone"])
+        inicio = datas.instante(dia, item["horario"], tenant["timezone"])
+        onde = f"{rotulo_tel}, {dia.isoformat()} {item['horario']}"
+
+        linhas = banco.agendamento_por(conn, tenant["id"], alvo, inicio)
+        if len(linhas) != 1:
+            checagens.append(
+                _checagem(chave, f"exatamente 1 linha ({onde})", f"{len(linhas)} linha(s)", False)
+            )
+            falhas.append(f"{chave}: esperava exatamente 1 linha para {onde}, achei {len(linhas)}")
+            continue
+
+        obtido = linhas[0]["status"]
+        ok = obtido == item["status"]
+        checagens.append(_checagem(chave, f"{item['status']} ({onde})", obtido, ok))
+        if not ok:
+            falhas.append(f"{chave}: esperado status {item['status']!r} para {onde}, obtido {obtido!r}")
+
+    return falhas, checagens
 
 
 def _checar_linha(esperado, linha, cenario, tenant, tz) -> tuple:

@@ -1,0 +1,45 @@
+id: cancelamento-correto
+descricao: >
+  Cliente cancela o PRÓPRIO agendamento — e o de outra pessoa, marcado no
+  mesmo dia, tem de continuar intacto. `agendamentos: 1` sozinho só prova que
+  o TOTAL caiu; não prova que caiu o agendamento certo (é a mesma categoria
+  dos bugs de `nome_profissional` e linha órfã: o agregado batia, a linha
+  errada é que estava errada). `agendamento_status` afere as DUAS linhas por
+  nome: a do contato virou `cancelado`, a de Camila Rocha segue `ativo`.
+
+tenant:
+  service_duration_minutes: 60
+  horario_manha_inicio: "08:00"
+  horario_manha_fim: "12:00"
+
+agenda_ocupada:
+  # Agendamento de verdade de outra pessoa, no mesmo dia do contato — se a
+  # Sofia cancelar a linha errada (ou cancelar as duas), este cenário pega.
+  - data: "+2"
+    horario: "14:00"
+    duracao_minutos: 60
+    titulo: "Atendimento - Camila Rocha"
+    telefone: "5511999990002"
+
+turnos:
+  - "quero marcar um horário"
+  - "depois de amanhã de manhã"
+  - "às 10h"
+  - "confirma, meu nome é Rafael Torres"
+  - "na verdade preciso cancelar esse meu agendamento"
+  - "sim, pode cancelar"
+
+verificacoes:
+  agendamentos: 1                    # só o da Camila continua ativo
+  sem_agendamento_novo: true         # o do contato nasceu e morreu na mesma execução
+  agendamento_status:
+    - telefone: contato
+      data: "+2"
+      horario: "10:00"
+      status: cancelado
+    - telefone: "5511999990002"
+      data: "+2"
+      horario: "14:00"
+      status: ativo
+  # Tetos de custo ainda NÃO medidos — pendente 3 passadas sob o modelo
+  # declarado. Omitidos de propósito em vez de chutados.
