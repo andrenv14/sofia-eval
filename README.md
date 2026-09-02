@@ -347,11 +347,13 @@ tráfego real. Nada inventado.
 
 ### Leva 2 — vocabulário fechado, tetos de custo AINDA NÃO medidos
 
-Os quatro cenários abaixo passam na validação de esquema (`--lista`) e usam só
+Os sete cenários abaixo passam na validação de esquema (`--lista`) e usam só
 chaves já existentes ou as duas novas desta leva (`respostas_assistente_max`,
 `agendamento_status`). Nenhum deles fixou `chamadas_ia_max`/`tokens_prompt_max`
 ainda — falta a passada de 3 execuções que a seção "De onde vêm os tetos de
-custo" exige antes de considerar um cenário fechado.
+custo" exige, e falta primeiro a guarda em torno de `completion.choices[0]`
+entrar no `sofia-bot` (achado de 02/09, ver `AGENTS.md`) — calibrar contra um
+bug de infra gastaria token medindo o número errado.
 
 | Cenário | O que prova |
 |---|---|
@@ -359,6 +361,26 @@ custo" exige antes de considerar um cenário fechado.
 | `cancelamento-correto` | cancela o agendamento do contato sem tocar no de outra pessoa marcado no mesmo dia |
 | `horario-de-outra-pessoa` | não marca em cima de um agendamento real de outra pessoa (variante de `horario-ocupado` com dono) |
 | `bot-a-bot-desengajar` | detectado robô de menu de outra empresa, responde uma vez e para — achado de tráfego real de 31/08, nasce vermelho até o prompt do `sofia-bot` mudar |
+| `duplicidade` | pedir o mesmo horário duas vezes não vira duas linhas, robusto ao caminho que o modelo escolher |
+| `configuracao-multiprofissional` | 4 profissionais, agenda única — nome resolve pra duração certa, dois profissionais não colidem no mesmo horário (dados fictícios, anonimizado) |
+| `precisa-verificar-novamente` | modelo não inventa confirmação em cima do "tenta de novo" ambíguo de `createEvent` — intermitente por natureza, ver descrição do YAML |
+
+**Não escrito ainda:** `grade ignorada sem profissional`. Duas coisas
+bloqueiam, achadas ao tentar escrever: (1) `resolverProfissionalObrigatorio`
+(`sofia-bot/src/ai/tools.js`) recusa QUALQUER tool call de agenda sem
+`nome_profissional` sempre que o tenant tem profissional cadastrado — o
+`professional` só chega `null` em `checkAvailability`/`createEvent` quando o
+tenant não tem NENHUM profissional, caso em que ignorar a grade é o
+comportamento correto, não o bug. Pelo código lido, o bug como a fila descreve
+parece já fechado pela camada 4 de `nome-profissional-obrigatorio.md`
+(28/08) — não confirmei contra a entrada de `LOG.md` que a fila cita, não
+achei pelo nome. (2) Mesmo que não estivesse fechado, `sofia_eval` não tem
+mecanismo de semeadura para `professional_availability` — sem popular essa
+tabela, um profissional nunca tem grade restrita pra violar
+(`temGradeConfigurada` sempre `false`, `slotPermitidoPelaGrade` sempre libera
+por desenho). As duas coisas juntas tornam este cenário inescrevível hoje sem
+decisão prévia: confirmar se o bug segue vivo, e desenhar a seção de
+`agenda_ocupada`/`tenant` que semearia `professional_availability`.
 
 ### O vermelho conhecido fechou — e virou regressão
 

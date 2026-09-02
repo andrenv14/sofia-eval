@@ -1,0 +1,72 @@
+id: configuracao-multiprofissional
+descricao: >
+  Pré-requisito de lançamento de um tenant real com 4 profissionais e agenda
+  única — dados fictícios de propósito (decisão do fundador, 29/08: entra
+  sem os dados reais do cliente que este cenário protege; nome do cliente
+  não pertence a repositório público, nem como identificador de cenário).
+
+  Prova duas coisas que só aparecem com mais de um profissional no ar:
+  1. o nome resolve para o profissional CERTO, com a duração DELE — não a do
+     tenant (que aqui nem teria sentido, já que cada um tem a sua) nem a de
+     outro profissional;
+  2. dois profissionais diferentes podem ser marcados no MESMO horário sem
+     colisão — disponibilidade é por profissional
+     (`professionals/availability.js`), um agendamento de um não bloqueia o
+     outro. Sem isso, "horário ocupado" dispararia para o negócio inteiro
+     toda vez que qualquer um dos 4 estivesse ocupado.
+
+  Exercita `agenda_ocupada[].profissional` pela primeira vez na leva — README
+  já documentava a chave, mas nenhum cenário da v1 a usava (achado da fila,
+  27/08). `profissional:` é OBRIGATÓRIO neste item: sem ele, `agenda.py`
+  insere `professional_id` nulo, e a trigger `BEFORE INSERT` da camada 4 de
+  `nome-profissional-obrigatorio.md` recusa isso com erro cru de Postgres —
+  a semeadura estoura antes do primeiro turno.
+
+  FORA deste cenário: exceção de agenda por profissional
+  (`professional_availability_exceptions`). `sofia_eval` não tem hoje
+  mecanismo de semeadura para essa tabela nem para `professional_availability`
+  — `cenario.py`/`agenda.py` só cobrem `appointments`, via `agenda_ocupada`.
+  Item em aberto, registrado à parte — não é lacuna deste cenário específico.
+
+tenant:
+  service_duration_minutes: 30
+  slot_interval_minutes: 30
+  horario_manha_inicio: "08:00"
+  horario_manha_fim: "12:00"
+  profissionais:
+    - nome: Beatriz
+      service_duration_minutes: 45
+    - nome: Carlos
+      service_duration_minutes: 30
+    - nome: Denise
+      service_duration_minutes: 60
+    - nome: Eduardo
+      service_duration_minutes: 30
+
+agenda_ocupada:
+  # Agendamento de verdade de outra pessoa, com a Denise, no MESMO horário em
+  # que o contato vai marcar com a Beatriz — profissionais diferentes, não
+  # pode bloquear.
+  - data: "+2"
+    horario: "09:00"
+    duracao_minutos: 60
+    titulo: "Atendimento - Fernanda Lopes"
+    telefone: "5511999990006"
+    profissional: Denise
+
+turnos:
+  - "quero marcar com a beatriz"
+  - "depois de amanhã às 9h"
+  - "confirma, meu nome é Gustavo Ramos"
+
+verificacoes:
+  agendamentos: 2               # a da Denise (terceiro, intocada) + a nova da Beatriz
+  agendamento:
+    profissional: Beatriz
+    duracao_minutos: 45         # duração DELA — não 30 (tenant/Carlos/Eduardo), não 60 (Denise)
+    horario: "09:00"
+    telefone: contato
+  # Tetos de custo ainda NÃO medidos — pendente 3 passadas sob o modelo
+  # declarado, e pendente a guarda em torno de `completion.choices[0]`
+  # (achado de 02/09, `openrouter.js:110`) entrar antes de gastar token
+  # calibrando contra um bug de infra.
