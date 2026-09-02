@@ -1,0 +1,37 @@
+id: duplicidade
+descricao: >
+  Pedir o mesmo horário duas vezes (reentrega de mensagem, duplo toque,
+  reconexão) não pode virar duas linhas em `appointments`. `createEvent`
+  trata isso por dentro — `INSERT ... ON CONFLICT (tenant_id, professional_id,
+  inicio, fim) WHERE status='ativo' DO NOTHING`, e se a linha existente já é
+  do MESMO telefone, devolve o evento já criado em vez de tentar duplicar
+  (`googleCalendar.js`, bloco de `reserva`/`respostaJaExistia`). Mas isso só
+  prova alguma coisa se o MODELO também não inventar uma segunda confirmação
+  por conta própria — e só o eval, com IA real, prova os dois lados ao mesmo
+  tempo. Robusto ao caminho que o modelo escolher: se ele reconhecer "você já
+  confirmou" sem chamar a ferramenta de novo, ou se chamar de novo e o banco
+  segurar pela idempotência, o resultado no banco é o mesmo — só falha se de
+  fato aparecer uma segunda linha.
+
+tenant:
+  service_duration_minutes: 60
+  horario_manha_inicio: "08:00"
+  horario_manha_fim: "12:00"
+
+turnos:
+  - "quero marcar um horário"
+  - "quinta de manhã"
+  - "às 9h"
+  - "confirma, meu nome é Juliana Prado"
+  - "confirma, meu nome é Juliana Prado"
+
+verificacoes:
+  agendamentos: 1
+  agendamento:
+    horario: "09:00"
+    duracao_minutos: 60
+    telefone: contato
+  # Tetos de custo ainda NÃO medidos — pendente 3 passadas sob o modelo
+  # declarado, e pendente a guarda em torno de `completion.choices[0]`
+  # (achado de 02/09, `openrouter.js:110`) entrar antes de gastar token
+  # calibrando contra um bug de infra.

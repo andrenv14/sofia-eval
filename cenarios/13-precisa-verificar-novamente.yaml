@@ -1,0 +1,48 @@
+id: precisa-verificar-novamente
+descricao: >
+  `createEvent` tem um caminho de conflito no INSERT (`ON CONFLICT
+  (tenant_id, professional_id, inicio, fim) WHERE status='ativo' DO NOTHING`,
+  `googleCalendar.js`) que devolve `precisa_verificar_novamente: true` e a
+  frase "Ainda não consegui confirmar esse horário, tenta de novo em
+  instantes" quando o horário exato já pertence a OUTRO telefone. É sinal
+  DELIBERADAMENTE ambíguo — não é um "não" definitivo como `horario-ocupado`,
+  é um "tenta de novo" — feito pra nunca virar `sucesso: true` com
+  `id_evento: null` (fatia 3 da reconciliação, `36956c6`, 29/08). O que este
+  cenário prova: o modelo não inventa confirmação em cima dessa ambiguidade.
+  A suíte não prova isso, porque a IA é simulada.
+
+  Efeito no banco IDÊNTICO ao de `horario-de-outra-pessoa` (nenhum
+  agendamento novo, o de terceiro intacto) — o que muda é o CAMINHO de
+  código, e o eval não enxerga isso: `ai_usage` não guarda nome de
+  ferramenta nem o corpo da resposta dela (README, "Ferramentas chamadas").
+  O turno único abaixo pede confirmação DIRETA, sem passo de checar
+  disponibilidade antes, para tentar cair no INSERT que colide — mas qual
+  caminho o modelo escolhe é decisão DELE, não do roteiro.
+  **Intermitente por natureza** — mesma categoria do achado
+  `nome_profissional` (2 de 6 execuções reproduziram, LOG.md 27/08): não é
+  prova reproduzível a cada passada, é uma chance maior de provar. Não
+  encontrei a entrada de LOG.md que a fila cita para este item por nome
+  exato — se existir com outra redação, vale conferir antes de fechar teto.
+
+tenant:
+  service_duration_minutes: 60
+  horario_manha_inicio: "08:00"
+  horario_manha_fim: "12:00"
+
+agenda_ocupada:
+  - data: "+2"
+    horario: "10:00"
+    duracao_minutos: 60
+    titulo: "Atendimento - Vinícius Prado"
+    telefone: "5511999990007"
+
+turnos:
+  - "quero marcar depois de amanhã às 10h da manhã, confirma logo, meu nome é Leandro Costa"
+
+verificacoes:
+  agendamentos: 1              # só o do Vinícius continua
+  sem_agendamento_novo: true
+  # Tetos de custo ainda NÃO medidos — pendente 3 passadas sob o modelo
+  # declarado, e pendente a guarda em torno de `completion.choices[0]`
+  # (achado de 02/09, `openrouter.js:110`) entrar antes de gastar token
+  # calibrando contra um bug de infra.
