@@ -224,7 +224,7 @@ verificacoes:
 silenciosamente é pior que verificação nenhuma. A validação roda em **todos** os
 arquivos antes do primeiro token ser gasto.
 
-### Vocabulário de verificação (v1 — fechado)
+### Vocabulário de verificação (fechado)
 
 | Chave | O que afere |
 |---|---|
@@ -237,11 +237,26 @@ arquivos antes do primeiro token ser gasto.
 | `sem_agendamento_novo` | nada foi criado além do que já existia |
 | `chamadas_ia_max` | teto de `SUM(chamadas_ia)` em `ai_usage` |
 | `tokens_prompt_max` | teto de `SUM(prompt_tokens)` em `ai_usage` |
+| `respostas_assistente_max` | teto de linhas `messages` com `role='assistant'`, do contato do cenário |
+| `agendamento_status` | estado (`ativo`/`cancelado`) de uma linha **específica**, por `telefone`+`data`+`horario` |
 
-Os dois últimos são guarda de custo, e existem porque o incidente de laço
-mostrou que o custo cresce em curva: 61 chamadas consumiram 530.575 tokens de
-prompt contra 4.153 de resposta. **Cenário que estoura o teto falha, mesmo
-acertando o agendamento.**
+Os dois últimos da tabela original (`chamadas_ia_max`, `tokens_prompt_max`) são
+guarda de **custo**, e existem porque o incidente de laço mostrou que o custo
+cresce em curva: 61 chamadas consumiram 530.575 tokens de prompt contra 4.153
+de resposta. **Cenário que estoura o teto falha, mesmo acertando o
+agendamento.**
+
+`respostas_assistente_max` é guarda de **comportamento** (desengajar), não de
+custo — entrou na leva 2 para o cenário `bot-a-bot-desengajar` (ver abaixo). É
+lista, não igualdade: "desengajar" é "no máximo N respostas", nunca zero (o
+primeiro turno legítimo já grava uma).
+
+`agendamento_status` também entrou na leva 2, para cenários com **mais de uma
+linha em jogo** (ex.: `cancelamento-correto`, que precisa provar que a linha
+CERTA virou `cancelado`, e não só que o total caiu — `agendamentos` sozinho não
+distingue as duas coisas). Falha alta por desenho: 0 linhas encontradas para o
+`telefone`+`data`+`horario` pedido é FALHA (não passa em branco), e mais de 1
+também é FALHA, por ambiguidade — nunca escolhe uma linha sozinho.
 
 ### De onde vêm os tetos de custo
 
@@ -284,6 +299,15 @@ Aceita as colunas de configuração de agendamento (`timezone`,
 `profissionais` (`nome`, `service_duration_minutes`, `sort_order`). O resto é
 preenchido com os mesmos padrões de `tests/helpers/fixtures.js` do `sofia-bot`.
 
+`openrouter_model` (opcional) declara o modelo sob avaliação **no cenário**, em
+vez de deixá-lo implícito no `.env` do `sofia-bot`. Sem declarar, o tenant nasce
+com a coluna NULA e herda o `OPENROUTER_MODEL` de lá — mesmo comportamento de
+sempre. Declare quando o cenário tiver teto (`chamadas_ia_max`,
+`tokens_prompt_max`) calibrado contra um modelo específico: o modelo que
+efetivamente respondeu sempre aparece no relatório HTML (cabeçalho "modelo(s)"
+e por cenário), lido de `ai_usage.model` — o que o servidor gravou, não o que a
+config dizia.
+
 ### `agenda_ocupada`
 
 Estado que já existia quando o contato escreveu. Cada item vira **evento de
@@ -305,9 +329,12 @@ número na descrição — o formato que `createEvent` grava, e que `cancelEvent
 para decidir de quem é o compromisso — mais a linha correspondente em
 `appointments`.
 
-## Os 6 cenários da v1
+## Os cenários
 
-Todos saem de bug real deste projeto ou de regra já documentada. Nada inventado.
+Todos saem de bug real deste projeto, de regra já documentada, ou de achado de
+tráfego real. Nada inventado.
+
+### Os 6 da v1 — tetos medidos, 3 passadas cada
 
 | Cenário | O que prova |
 |---|---|
@@ -317,6 +344,21 @@ Todos saem de bug real deste projeto ou de regra já documentada. Nada inventado
 | `horario-ocupado` | não marca em cima de compromisso que já existe |
 | `data-relativa` | "depois de amanhã" cai no dia certo, no fuso do tenant |
 | `fora-do-horario` | pedido às 22h não vira agendamento, mesmo com insistência |
+
+### Leva 2 — vocabulário fechado, tetos de custo AINDA NÃO medidos
+
+Os quatro cenários abaixo passam na validação de esquema (`--lista`) e usam só
+chaves já existentes ou as duas novas desta leva (`respostas_assistente_max`,
+`agendamento_status`). Nenhum deles fixou `chamadas_ia_max`/`tokens_prompt_max`
+ainda — falta a passada de 3 execuções que a seção "De onde vêm os tetos de
+custo" exige antes de considerar um cenário fechado.
+
+| Cenário | O que prova |
+|---|---|
+| `remarcacao` | trocar de horário cancela o antigo em vez de duplicar a linha |
+| `cancelamento-correto` | cancela o agendamento do contato sem tocar no de outra pessoa marcado no mesmo dia |
+| `horario-de-outra-pessoa` | não marca em cima de um agendamento real de outra pessoa (variante de `horario-ocupado` com dono) |
+| `bot-a-bot-desengajar` | detectado robô de menu de outra empresa, responde uma vez e para — achado de tráfego real de 31/08, nasce vermelho até o prompt do `sofia-bot` mudar |
 
 ### O vermelho conhecido fechou — e virou regressão
 
@@ -418,10 +460,20 @@ E se o webhook devolver `401`, é `WHATSAPP_APP_SECRET` diferente entre os dois
 `.env`: a assinatura HMAC do eval bate byte a byte com a de
 `tests/helpers/webhookPayload.js`, mas o segredo tem de ser o mesmo.
 
-## Fora de escopo (v1)
+## Fora de escopo
 
-- Julgamento por conteúdo de texto, e uso de outro modelo como juiz.
-- Teste de carga e cenários de laço bot-a-bot — outra categoria, outra ferramenta.
+- Julgamento por conteúdo de texto, e uso de outro modelo como juiz. Decisão do
+  fundador mantida na leva 2: falso negativo de regex é silencioso (parafraseia
+  e o cenário passa sem provar nada) e modelo juiz é o mesmo tipo de artefato
+  sob teste — vira decisão própria, não implícita numa leva de cenários. Em
+  consequência, `capacidade inventada` (achado de tráfego real de 01/09: a
+  Sofia oferece encaminhar recado e escrever texto — nenhuma ferramenta faz
+  isso, então zero rastro no banco) fica **bloqueado até a v2**.
+- Teste de carga — simular volume para estressar o loop-guard é outra
+  categoria, outra ferramenta. **Não inclui** verificar que a Sofia se
+  desengaja de um robô de menu (`bot-a-bot-desengajar`, leva 2): isso é
+  comportamento de MODELO em 4 turnos determinísticos, aferido por
+  `respostas_assistente_max` — não é laço nem carga.
 - Qualquer coisa que rode na VPS.
 - Servidor, API, contêiner. (O relatório HTML é **arquivo escrito em disco**,
   não interface — não contraria este limite. Ver "Relatório HTML" acima.)

@@ -1,0 +1,34 @@
+id: remarcacao
+descricao: >
+  Remarcar não pode duplicar a linha. Não existe ferramenta de "atualizar
+  agendamento" — o prompt manda cancelar o antigo e criar o novo
+  (systemPrompt.js, item 9: "use a ferramenta de cancelamento e depois, se for
+  o caso, agende o novo horário"). Se a Sofia só criar o novo sem cancelar o
+  velho, sobra agendamento duplicado: dois horários reservados, um só
+  compareceria. `agendamentos: 1` pega o total (duplicou = 2); o horário do
+  `agendamento` (que só olha o que é NOVO nesta execução) pega se o novo
+  ficou no lugar certo.
+
+tenant:
+  service_duration_minutes: 60
+  horario_manha_inicio: "08:00"
+  horario_manha_fim: "12:00"
+
+turnos:
+  - "quero marcar um horário"
+  - "quinta de manhã"
+  - "às 9h"
+  - "confirma, meu nome é Fernanda Costa"
+  - "na verdade preciso mudar esse horário pra 11h, no mesmo dia"
+  - "isso mesmo, pode confirmar às 11h"
+
+verificacoes:
+  agendamentos: 1            # se duplicou (criou sem cancelar), vira 2
+  agendamento:
+    horario: "11:00"
+    duracao_minutos: 60
+    telefone: contato
+  # Tetos de custo ainda NÃO medidos — pendente 3 passadas sob o modelo
+  # declarado (docs/features/sofia-eval.md: "cada cenário novo exige medição
+  # própria: 3 passadas, teto = 2× o máximo"). Omitidos de propósito em vez
+  # de chutados.

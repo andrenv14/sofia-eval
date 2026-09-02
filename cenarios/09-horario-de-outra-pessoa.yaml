@@ -1,0 +1,30 @@
+id: horario-de-outra-pessoa
+descricao: >
+  Não pode marcar em cima do horário de um agendamento real de outra pessoa —
+  completa a matriz que `horario-ocupado` deixa aberta. Aquele cenário usa
+  `agenda_ocupada` SEM telefone (bloqueio manual, "o dono marcou à mão");
+  este usa COM telefone: o slot ocupado é um agendamento de verdade, com
+  dono, e não pode ser sobrescrito nem alterado — mesmo que o cliente insista
+  no mesmo horário.
+
+tenant:
+  service_duration_minutes: 60
+  horario_manha_inicio: "08:00"
+  horario_manha_fim: "12:00"
+
+agenda_ocupada:
+  - data: "+2"
+    horario: "10:00"
+    duracao_minutos: 60
+    titulo: "Atendimento - Patrícia Nunes"
+    telefone: "5511999990003"
+
+turnos:
+  - "quero marcar depois de amanhã às 10h da manhã"
+  - "pode confirmar às 10h mesmo, meu nome é Diego Martins"
+
+verificacoes:
+  agendamentos: 1             # só o da Patrícia continua
+  sem_agendamento_novo: true
+  # Tetos de custo ainda NÃO medidos — pendente 3 passadas sob o modelo
+  # declarado. Omitidos de propósito em vez de chutados.

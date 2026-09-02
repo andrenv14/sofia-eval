@@ -36,6 +36,22 @@ def agendamentos_ativos(conn, tenant_id: int) -> list:
     ).fetchall()
 
 
+def agendamento_por(conn, tenant_id: int, telefone: str, inicio) -> list:
+    """Linhas de `appointments` para um tenant/telefone/horário exatos, EM
+    QUALQUER STATUS — ao contrário de `agendamentos_ativos`, que só vê
+    `status='ativo'`. Usada por `agendamento_status`, que afere o estado de
+    uma linha específica (ex.: virou 'cancelado'), não o agregado."""
+    return conn.execute(
+        """
+        SELECT id, telefone, inicio, fim, status
+          FROM appointments
+         WHERE tenant_id = %s AND telefone = %s AND inicio = %s
+         ORDER BY id
+        """,
+        (tenant_id, telefone, inicio),
+    ).fetchall()
+
+
 def custo(conn, tenant_id: int) -> dict:
     linha = conn.execute(
         """

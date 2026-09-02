@@ -18,6 +18,14 @@ PADRAO = {
     "bot_name": "Sofia",
     "business_name": "Clínica de Teste",
     "system_prompt_extra": None,
+    # NULL herda o comportamento de hoje: openrouter.js (linha 43) resolve
+    # `tenant.openrouter_model || config.openrouter.model`, então sem valor
+    # aqui o modelo é o que estiver no OPENROUTER_MODEL do .env do sofia-bot —
+    # e isso não aparecia declarado em lugar nenhum. Cenário que precisa de
+    # teto calibrado contra um modelo específico declara `tenant.openrouter_model`
+    # no YAML; o efetivo sempre fica carimbado no relatório HTML (banco.modelos,
+    # que lê de `ai_usage.model` — o que de fato atendeu, não o que a config dizia).
+    "openrouter_model": None,
     "timezone": "America/Sao_Paulo",
     "service_duration_minutes": 60,
     "slot_interval_minutes": 30,

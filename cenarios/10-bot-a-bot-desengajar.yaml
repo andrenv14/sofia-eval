@@ -1,0 +1,30 @@
+id: bot-a-bot-desengajar
+descricao: >
+  Achado de tráfego real (31/08, tenant <id>, contato <número omitido>): a Sofia
+  trocou 4 mensagens com o robô de menu de outra empresa, detectou a
+  automação DUAS VEZES explicitamente e mesmo assim continuou respondendo —
+  a troca só acabou porque o OUTRO bot transferiu para humano. O loop-guard
+  não pega isso: é backstop quantitativo (35 msgs/120s, 60/h), e uma troca de
+  4 mensagens em 50s nunca o dispara. É comportamento de MODELO, que a suíte
+  (IA simulada) não alcança.
+
+  Decisão de produto do fundador (31/08): SILENCIAR. Detectado menu
+  automático, a Sofia responde UMA vez (com o pitch) e para — não segue
+  tentando engajar. Este cenário mede a CONTAGEM de respostas, não o texto,
+  e nasce vermelho até o prompt mudar para a regra de silenciar (protocolo do
+  item 8 da fila: cenário antes do conserto, para provar a correção).
+
+tenant:
+  service_duration_minutes: 60
+
+turnos:
+  - "Olá! Bem-vindo(a) à nossa central de atendimento. Para agilizar, escolha uma opção:\n1 - Vendas\n2 - Suporte\n3 - Financeiro\n4 - Falar com atendente"
+  - "Não entendi sua resposta. Digite o número de uma das opções acima."
+  - "Você será transferido para um atendente em instantes. Aguarde, por favor."
+  - "Nosso horário de atendimento é de segunda a sexta, das 9h às 18h."
+
+verificacoes:
+  respostas_assistente_max: 1
+  # Guarda de COMPORTAMENTO (desengajar), não de custo — de propósito sem
+  # chamadas_ia_max/tokens_prompt_max: o que importa aqui é PARAR de
+  # responder, não quanto custou até parar.
