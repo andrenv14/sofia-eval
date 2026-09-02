@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/estado.sh",
+            "timeout": 20,
+            "statusMessage": "Lendo estado do repositório (sofia-eval)..."
+          }
+        ]
+      }
+    ]
+  }
+}
