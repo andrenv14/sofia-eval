@@ -158,15 +158,22 @@ def rodar(conn, cliente, calendario, cfg, c) -> relatorio.Resultado:
             # modelo, `agendamentos: 0` e `sem_agendamento_novo: true` ficam
             # satisfeitos por vacuidade. Medido em 03/09 com o modelo sob
             # rate limit (429): 2 chamadas, 0 tokens, cenário PASSOU.
-            degradados = banco.turnos_degradados(conn, tenant["id"])
-            if degradados:
+            # DOIS detectores, e um NÃO substitui o outro: a assinatura pega o
+            # 429 que mata a iteração 1; o texto sentinela pega o turno
+            # PARCIALMENTE degradado, que a assinatura não distingue de um
+            # saudável. Medido em 03/09 — a forma parcial passou verde com a
+            # assinatura sozinha. Ver os cabeçalhos das duas funções.
+            por_assinatura = banco.turnos_degradados(conn, tenant["id"])
+            por_texto = banco.turnos_degradados_por_texto(conn, tenant["id"])
+            if por_assinatura or por_texto:
                 custo = banco.custo(conn, tenant["id"])
                 print(relatorio.ERRO)
                 resultado = relatorio.Resultado(
                     c.id, relatorio.ERRO,
-                    [f"{degradados} turno(s) degradado(s): a API respondeu sem choice utilizável "
-                     "(chamada registrada, zero token de prompt). O modelo não respondeu — "
-                     "qualquer veredito aqui seria sobre o silêncio, não sobre o comportamento. "
+                    [f"turno(s) degradado(s) — por assinatura: {por_assinatura}, "
+                     f"por texto de desculpa: {por_texto}. A API respondeu sem choice "
+                     "utilizável e o modelo não disse o que o cenário mede; qualquer "
+                     "veredito aqui seria sobre o silêncio, não sobre o comportamento. "
                      "O motivo estruturado está no log do servidor: procure "
                      "'resposta sem choice utilizável'."],
                     custo, time.monotonic() - comeco,

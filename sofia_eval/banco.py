@@ -77,6 +77,55 @@ def turnos_degradados(conn, tenant_id: int) -> int:
     return int(linha["n"])
 
 
+# Texto EXATO que `openrouter.js` devolve quando o turno degrada — copiado
+# literalmente de `src/ai/openrouter.js` (`cee3876`, linha 362). Não é
+# heurística: é um sentinela de valor fixo, e o casamento é por igualdade.
+TEXTO_DEGRADADO = "Desculpa, deu uma travada aqui. Pode repetir sua última mensagem?"
+
+
+def turnos_degradados_por_texto(conn, tenant_id: int) -> int:
+    """Os turnos degradados que `turnos_degradados` NÃO enxerga.
+
+    CONTORNO, e contorno nasce com data para morrer: esta função cai quando o
+    `sofia-bot` passar a registrar a iteração fracassada como dado próprio em
+    `ai_usage` (item de fila de lá, decisão da guia em 03/09). Até lá os dois
+    detectores rodam JUNTOS — este não substitui a assinatura, cobre o outro
+    lado dela.
+
+    Por que é preciso, medido em 03/09: o corpo do 429 chega SEM `usage` (o
+    log do servidor diz `chaves=[id,error]`), e o `usoAcumulado.chamadas += 1`
+    do `openrouter.js` está DENTRO de `if (completion?.usage)`. Então a
+    iteração que falha não deixa rastro nenhum, e o que sobra em `ai_usage`
+    depende de QUANDO o 429 chegou:
+
+    - **429 na iteração 1** — nada foi contado, `registrarUso` grava
+      `chamadas || 1` (`usage.js:37`) e a linha sai `(1 chamada, 0 tokens)`.
+      Casa a assinatura; `turnos_degradados` acusa.
+    - **429 na iteração ≥2** — a iteração 1 já somou tokens de verdade, e a
+      linha sai `(1 chamada, 7.482 tokens)`. É indistinguível de um turno
+      saudável, e a assinatura fica cega.
+
+    A segunda forma não é hipótese: ela produziu um VERDE FALSO medido. Com o
+    `grade-do-profissional` quebrado de propósito, os dois turnos degradaram na
+    iteração 2 e o cenário PASSOU — as duas respostas eram o texto de desculpa.
+    No banco, esse texto é o único rastro que sobra.
+
+    RISCO, e ele é SILENCIOSO: isto casa uma string literal de outro
+    repositório. Se alguém mudar aquele texto no `openrouter.js`, esta detecção
+    para de acusar sem avisar ninguém, e o verde falso volta. Quem mexer no
+    texto tem de mexer aqui. O `autoteste` exerce os dois sentidos e também o
+    quase-acerto, para essa fragilidade ficar executável em vez de só escrita.
+    """
+    linha = conn.execute(
+        """
+        SELECT count(*) AS n FROM messages
+         WHERE tenant_id = %s AND role = 'assistant' AND content = %s
+        """,
+        (tenant_id, TEXTO_DEGRADADO),
+    ).fetchone()
+    return int(linha["n"])
+
+
 def custo(conn, tenant_id: int) -> dict:
     linha = conn.execute(
         """
