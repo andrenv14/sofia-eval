@@ -114,7 +114,26 @@ Bloqueada até a guarda de `completion.choices[0]` (`openrouter.js`,
 `handleUserMessage`) entrar em produção: passada que morre em `TypeError` não
 mede nada. Quando entrar, esta é a ordem, sem nada a decidir na hora.
 
-**Passo −1 — ler o corpo que a guarda registrou. NÃO pule para o Passo 0.**
+A ordem é barata→cara de propósito: cada passo elimina uma hipótese antes que
+a seguinte custe janela ou token. (Renumerado em 03/09; onde as mensagens
+antigas dizem "Passo −1" leia passo 2, e "Passo 0", passo 3.)
+
+**Passo 1 — verificar o VERIFICADOR, antes de qualquer coisa.**
+
+```bash
+.venv/bin/python -m sofia_eval.autoteste
+```
+
+Segundos, zero token. Exerce cada chave do vocabulário nos dois sentidos
+contra o banco. Se algo aqui reprovar, **pare**: quer dizer que a camada que
+decide PASSOU/FALHOU está quebrada, e toda medição feita em cima dela seria
+confiança falsa com carimbo de número. Vindo antes, ele elimina de graça a
+hipótese "minha verificação está errada" — sem isso, uma reprovação nas
+passadas obriga a voltar e checar, gastando janela.
+
+(Usa o `sofia_test`, então vale a trava de recurso do passo 0.)
+
+**Passo 2 — ler o corpo que a guarda registrou. NÃO pule para o passo 3.**
 A guarda **não conserta a causa**; ela converte um `TypeError` que mata o turno
 numa degradação que REGISTRA o que a API devolveu no lugar de `choices`. Ou
 seja: depois do deploy, os cenários que erravam provavelmente vão rodar até o
@@ -139,7 +158,7 @@ Regra da guia, 03/09. É a mesma distinção de ERRO ≠ FALHOU do `AGENTS.md`,
 aplicada um nível acima: um cenário pode COMPLETAR e ainda assim não estar
 medindo o que se pensa.
 
-**Passo 0 — controle de sensibilidade dos cenários que nascem VERDES.**
+**Passo 3 — controle de sensibilidade dos cenários que nascem VERDES.**
 São dois: `grade-do-profissional` e `agenda-unica-um-por-vez`. Cada um traz
 no próprio YAML a instrução exata de como quebrá-lo; em resumo, no
 `agenda-unica-um-por-vez` é remover o item de `agenda_ocupada`, e sem ele a
@@ -152,7 +171,7 @@ DEVE acontecer, `agendamentos` vira 1, e o cenário **tem de ficar VERMELHO**.
 Se ficar verde, ele não entra na leva e o achado vale mais que a calibração.
 Restaure o YAML e registre o resultado no relato.
 
-**Passo 1 — 3 passadas dos 9 cenários sem teto**, com o modelo declarado na
+**Passo 4 — 3 passadas dos 9 cenários sem teto**, com o modelo declarado na
 subida. Fonte da verdade sobre quem falta é o YAML, não uma lista escrita
 aqui, que envelhece: cenário sem `chamadas_ia_max` é cenário sem teto.
 Levantar a lista sem gastar nada — casando a CHAVE, não a string:
