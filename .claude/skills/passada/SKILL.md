@@ -135,6 +135,33 @@ cenário com turnos bons e degradados misturados escapa do agregado. Desde
 qualquer verificação rodar — a regra existe para o que vem DEPOIS disso: três
 passadas com uma degradada no meio dão um teto envenenado sem ninguém notar.
 
+**São DOIS detectores, e um não substitui o outro** — porque a assinatura
+sozinha não bastava, e isso foi medido, não previsto. O corpo do 429 chega SEM
+`usage`, e o `+= 1` do `openrouter.js` está dentro de `if (completion?.usage)`;
+então o que fica em `ai_usage` depende de QUANDO o 429 chegou:
+
+| onde o 429 bate | linha em `ai_usage` | quem pega |
+|---|---|---|
+| iteração 1 (turno todo degradado) | `(1 chamada, 0 tokens)` — o `chamadas \|\| 1` do `usage.js:37` converte o zero | `turnos_degradados` |
+| iteração ≥2 (turno PARCIAL) | `(1 chamada, 7.482 tokens)` — a iteração 1 já somou de verdade | `turnos_degradados_por_texto` |
+
+A segunda forma produziu um **verde falso medido** em 03/09: o
+`grade-do-profissional`, com a condição quebrada de propósito, PASSOU — as duas
+respostas eram *"Desculpa, deu uma travada aqui"*. A assinatura não viu.
+
+**O segundo detector é CONTORNO e tem data para morrer.** Ele casa uma string
+LITERAL de `openrouter.js` (`banco.TEXTO_DEGRADADO`). Morre quando o
+`sofia-bot` passar a registrar a iteração fracassada como dado próprio em
+`ai_usage` — item de fila de lá, decisão da guia em 03/09; a opção estruturada
+não foi feita agora porque é código de produção com migration, e a produção
+estava com incidente de 429 em curso.
+
+**Risco enquanto ele viver, e ele é SILENCIOSO:** se alguém mudar aquele texto
+no `openrouter.js`, o eval para de acusar e não avisa — o verde falso volta.
+Quem mexer no texto tem de mexer em `banco.TEXTO_DEGRADADO`. O `autoteste`
+exerce os dois sentidos E o quase-acerto (mesma frase sem um acento não pode
+acusar), para a fragilidade ser executável em vez de só escrita.
+
 Cenário que nasce VERDE precisa, antes de contar como guarda, do **controle de
 sensibilidade**: quebre de propósito a condição que ele guarda, rode, e veja o
 vermelho. Verde dos dois jeitos = a asserção não mede o que afirma medir. Ver

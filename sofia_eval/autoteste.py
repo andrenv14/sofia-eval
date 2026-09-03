@@ -94,6 +94,54 @@ def _checar_degradados(conn, tenant) -> list:
     return casos
 
 
+def _checar_degradados_por_texto(conn, tenant) -> list:
+    """`banco.turnos_degradados_por_texto` nos dois sentidos, mais o
+    quase-acerto.
+
+    O quase-acerto não é zelo: é a fragilidade do contorno virando teste. A
+    detecção casa uma string LITERAL de `openrouter.js`, então um texto
+    PARECIDO tem de NÃO acusar — e é exatamente por isso que mudar aquele
+    texto cega o eval em silêncio. Se este caso um dia falhar, alguém
+    afrouxou o casamento, e aí a detecção passa a acusar resposta legítima."""
+    casos = []
+    tid = tenant["id"]
+
+    def _msg(texto):
+        conn.execute(
+            "INSERT INTO messages (tenant_id, contact_phone, role, content) "
+            "VALUES (%s, %s, %s, %s)",
+            (tid, CONTATO, "assistant", texto),
+        )
+
+    conn.execute("DELETE FROM messages WHERE tenant_id = %s", (tid,))
+    _msg("Claro! Consigo às 9h com a Helena. Confirmo?")
+    casos.append((banco.turnos_degradados_por_texto(conn, tid) == 0,
+                  "degradado por texto: resposta legítima não é acusada", ""))
+
+    _msg(banco.TEXTO_DEGRADADO)
+    n = banco.turnos_degradados_por_texto(conn, tid)
+    casos.append((n == 1,
+                  "degradado por texto: acusa a desculpa MISTURADA com a legítima",
+                  "" if n == 1 else f"esperava 1, obtive {n}"))
+
+    _msg(banco.TEXTO_DEGRADADO)
+    n = banco.turnos_degradados_por_texto(conn, tid)
+    casos.append((n == 2,
+                  "degradado por texto: conta um por TURNO, não um por cenário",
+                  "" if n == 2 else f"esperava 2, obtive {n}"))
+
+    # Mesma frase sem o acento de "última": o casamento é por igualdade, então
+    # isto NÃO pode acusar. É a fragilidade do contorno, medida.
+    _msg("Desculpa, deu uma travada aqui. Pode repetir sua ultima mensagem?")
+    n = banco.turnos_degradados_por_texto(conn, tid)
+    casos.append((n == 2,
+                  "degradado por texto: quase-acerto NÃO acusa (a fragilidade, medida)",
+                  "" if n == 2 else f"esperava 2, obtive {n}"))
+
+    conn.execute("DELETE FROM messages WHERE tenant_id = %s", (tid,))
+    return casos
+
+
 # (descrição, verificacoes, espera_reprovar)
 CASOS = (
     ("agendamentos: conta só os ativos", {"agendamentos": 1}, False),
@@ -169,6 +217,7 @@ def main() -> int:
                                falhas[0] if falhas else ""))
 
             resultados.extend(_checar_degradados(conn, tenant))
+            resultados.extend(_checar_degradados_por_texto(conn, tenant))
         finally:
             mod_tenant.limpar(conn)
 
