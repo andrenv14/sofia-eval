@@ -91,6 +91,25 @@ verde dos dois jeitos, a asserção é decoração — e aí o achado é maior q
 cenário. Regra da guia, 03/09 (os rótulos de dia deste projeto seguem UTC),
 depois de dois bloqueadores custarem caro por previsão tratada como medição.
 
+**A regra não é sobre cenários — é sobre qualquer verificação, inclusive as
+suas próprias.** Um `grep` de auditoria, um filtro, uma varredura: se você só
+o viu dizer "limpo", ele não provou que consegue dizer "sujo". Caso concreto,
+03/09, os dois lados da mesa no mesmo dia: para conferir que nenhum telefone
+real tinha sobrado, rodei `55[0-9]{9,13}` e li "limpo" como prova. O padrão
+exige 9 dígitos seguidos; o número em questão estava mascarado
+(`5561xxxx` + `xxxx`) e tem 8 — a varredura era **estruturalmente incapaz** de
+achar justamente o que eu tinha acabado de remover. A guia rodou um pente
+equivalente no histórico e também voltou "limpo", pelo mesmo motivo, e só
+descobriu porque testou contra um positivo conhecido. **Toda varredura roda
+com controle positivo: primeiro faça-a acusar algo que você sabe que está
+lá.** Sem isso, "limpo" não é resultado, é ausência de resultado.
+
+**E varredura de árvore de trabalho não fala sobre o histórico.** `git grep`
+no checkout responde "o que está aqui agora"; um dado que já foi commitado e
+publicado continua legível por `git log -p` e pela página do commit, e
+removê-lo num commit posterior **não o despublica**. Para essa pergunta, o
+instrumento é `git log --all -S` / `git grep <padrão> $(git rev-list --all)`.
+
 ## O modelo sob avaliação é declarado, não ambiente
 
 Achado de 02/09: até essa data, `tenant.py` não gravava `openrouter_model` no
