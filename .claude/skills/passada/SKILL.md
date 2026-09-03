@@ -107,3 +107,42 @@ Cenário que nasce VERDE precisa, antes de contar como guarda, do **controle de
 sensibilidade**: quebre de propósito a condição que ele guarda, rode, e veja o
 vermelho. Verde dos dois jeitos = a asserção não mede o que afirma medir. Ver
 `AGENTS.md`.
+
+### A calibração pendente da leva 2 — ordem pronta para disparar
+
+Bloqueada até a guarda de `completion.choices[0]` (`openrouter.js`,
+`handleUserMessage`) entrar em produção: passada que morre em `TypeError` não
+mede nada. Quando entrar, esta é a ordem, sem nada a decidir na hora.
+
+**Passo 0 — controle de sensibilidade do `grade-do-profissional`.** Antes das
+passadas de medição, e não depois. Remova (ou desloque de hora) a exceção
+`bloqueio` do YAML e rode só esse cenário: sem o bloqueio das 9h a marcação
+DEVE acontecer, `agendamentos` vira 1, e o cenário **tem de ficar VERMELHO**.
+Se ficar verde, ele não entra na leva e o achado vale mais que a calibração.
+Restaure o YAML e registre o resultado no relato.
+
+**Passo 1 — 3 passadas dos 8 cenários sem teto**, com o modelo declarado na
+subida. São eles: `remarcacao`, `cancelamento-correto`,
+`horario-de-outra-pessoa`, `bot-a-bot-desengajar`, `duplicidade`,
+`configuracao-multiprofissional`, `precisa-verificar-novamente`,
+`grade-do-profissional`. Fonte da verdade sobre quem falta é o YAML, não esta
+lista: cenário sem `chamadas_ia_max` é cenário sem teto.
+
+Dimensionamento, para decidir com número em vez de susto — a chave de teste
+tem teto de US$5. Base medida da v1 sob `google/gemini-3.7-flash`: 17 turnos
+custaram 50 chamadas e 199.338 tokens de prompt por passada, ou seja ~2,9
+chamadas e ~11,7 mil tokens por turno. Os 8 cenários da leva 2 somam 29
+turnos, o que projeta **~85 chamadas e ~340 mil tokens de prompt por passada**,
+~1,0 milhão nas três. É um PISO, não um teto: três desses cenários têm 5 ou 6
+turnos, e conversa longa carrega histórico maior por turno.
+
+**O que NÃO precisa entrar nesta rodada: remedir os 6 cenários da v1.** Os
+tetos deles foram calibrados sob gemini, e a troca para `openai/gpt-5.6-luna`
+poderia tê-los invalidado — mas a passada de 02/09 mediu os três que
+produziram resultado, e nos três o luna custou MENOS que a base gemini
+(`duracao-por-profissional` 10/38.907 contra 13/56.657;
+`data-relativa` 6/22.833 contra 8/30.716; `horario-ocupado` 4/15.134 contra
+7/27.277). Então os tetos da v1 estão **folgados sob o modelo novo, não
+apertados**: não vão reprovar cenário por calibração. Remedi-los aperta a
+guarda, o que é bom, mas não destrava nada e dobraria o custo da rodada.
+Vale como fatia própria, depois — não como pré-requisito da leva 2.
