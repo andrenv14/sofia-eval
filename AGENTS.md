@@ -20,6 +20,24 @@ deste projeto, não um detalhe de estilo.
   mensagem de commit. Telefone sintético segue o padrão já usado em
   `cenarios/` (`5511999990NNN`) — nunca um número de verdade, nem "só de
   exemplo".
+
+  **Antes de todo commit aqui, uma pergunta — não uma varredura:**
+
+  > Alguma linha disto descreve operação, configuração ou estado de um
+  > cliente real?
+
+  O motivo de ser pergunta e não `grep`: em 03/09 três coisas passaram por
+  descuido — um telefone parcial mascarado, uma frase descrevendo a
+  configuração viva de um tenant, e uma varredura minha cega ao próprio caso
+  que buscava. **Nenhuma das três tinha padrão.** Grep não pegaria nenhuma;
+  a pergunta pegaria as três.
+
+  E o motivo de ser ANTES: em repositório público, `commit` + `push` **é
+  publicação, e é irreversível na prática**. Remover num commit posterior não
+  despublica (o conteúdo segue legível em `git log -p` e na página do commit),
+  e reescrever histórico não remove de forma confiável no GitHub — commit
+  órfão continua acessível por SHA, sobrevive em fork e em cache. A assimetria
+  é enorme: cuidar antes custa segundos, cuidar depois não resolve.
 - **Banco: só `sofia_test`, nunca produção.** A guarda em
   `sofia_eval/config.py` (`_conferir_banco`) recusa qualquer `DATABASE_URL`
   cujo nome de banco não seja exatamente `sofia_test`. Ela existe porque o
