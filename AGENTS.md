@@ -70,7 +70,7 @@ calibração, não por comportamento — os dois viram vermelho igual na tabela,
 mas significam coisas diferentes. Ao fechar cenário novo, o comentário ao
 lado do teto no YAML tem de dizer data, modelo e os três números medidos —
 é o padrão já usado em `cenarios/01` a `04`. Cenário sem teto medido (leva 2,
-em `cenarios/07` a `14` neste momento) é intencionalmente incompleto: omitir
+em `cenarios/07` a `15` neste momento) é intencionalmente incompleto: omitir
 é honesto, fabricar número não é.
 
 ## Cenário que nasce verde precisa de prova de sensibilidade

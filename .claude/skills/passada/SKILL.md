@@ -114,27 +114,62 @@ Bloqueada até a guarda de `completion.choices[0]` (`openrouter.js`,
 `handleUserMessage`) entrar em produção: passada que morre em `TypeError` não
 mede nada. Quando entrar, esta é a ordem, sem nada a decidir na hora.
 
-**Passo 0 — controle de sensibilidade do `grade-do-profissional`.** Antes das
+**Passo 0 — controle de sensibilidade dos cenários que nascem VERDES.**
+São dois: `grade-do-profissional` e `agenda-unica-um-por-vez`. Cada um traz
+no próprio YAML a instrução exata de como quebrá-lo; em resumo, no
+`agenda-unica-um-por-vez` é remover o item de `agenda_ocupada`, e sem ele a
+marcação DEVE acontecer e o cenário ficar vermelho.
+
+No `grade-do-profissional`: Antes das
 passadas de medição, e não depois. Remova (ou desloque de hora) a exceção
 `bloqueio` do YAML e rode só esse cenário: sem o bloqueio das 9h a marcação
 DEVE acontecer, `agendamentos` vira 1, e o cenário **tem de ficar VERMELHO**.
 Se ficar verde, ele não entra na leva e o achado vale mais que a calibração.
 Restaure o YAML e registre o resultado no relato.
 
-**Passo 1 — 3 passadas dos 8 cenários sem teto**, com o modelo declarado na
-subida. São eles: `remarcacao`, `cancelamento-correto`,
-`horario-de-outra-pessoa`, `bot-a-bot-desengajar`, `duplicidade`,
-`configuracao-multiprofissional`, `precisa-verificar-novamente`,
-`grade-do-profissional`. Fonte da verdade sobre quem falta é o YAML, não esta
-lista: cenário sem `chamadas_ia_max` é cenário sem teto.
+**Passo 1 — 3 passadas dos 9 cenários sem teto**, com o modelo declarado na
+subida. Fonte da verdade sobre quem falta é o YAML, não uma lista escrita
+aqui, que envelhece: cenário sem `chamadas_ia_max` é cenário sem teto.
+Levantar a lista sem gastar nada — casando a CHAVE, não a string:
 
-Dimensionamento, para decidir com número em vez de susto — a chave de teste
-tem teto de US$5. Base medida da v1 sob `google/gemini-3.7-flash`: 17 turnos
-custaram 50 chamadas e 199.338 tokens de prompt por passada, ou seja ~2,9
-chamadas e ~11,7 mil tokens por turno. Os 8 cenários da leva 2 somam 29
-turnos, o que projeta **~85 chamadas e ~340 mil tokens de prompt por passada**,
-~1,0 milhão nas três. É um PISO, não um teto: três desses cenários têm 5 ou 6
-turnos, e conversa longa carrega histórico maior por turno.
+```bash
+grep -L "^ *chamadas_ia_max:" cenarios/*.yaml
+```
+
+O `^ *` não é firula. `grep -L "chamadas_ia_max"` sem âncora devolve 8 em vez
+de 9: o `bot-a-bot-desengajar` cita o nome da chave num COMENTÁRIO explicando
+por que NÃO tem teto, e o padrão ingênuo conta isso como se tivesse. Achado ao
+rodar o controle positivo neste próprio comando — que é a regra do
+`AGENTS.md` aplicada à ferramenta antes de ela entrar aqui. Controle: os 6
+cenários da v1 têm de ficar FORA da lista.
+
+Dimensionamento **em dólares**, que é a moeda da decisão — token não é
+dólar, e o US$5 da chave é teto, não saldo. Medido em 03/09 pela API do
+OpenRouter: a chave tem limite de US$5, **já consumiu US$2,20** (desde 25/08,
+quase tudo sob gemini) e **restam US$2,80**. O preço do
+`openai/gpt-5.6-luna` é US$0,20 por milhão de tokens de prompt e US$1,20 por
+milhão de completion. Base medida da v1 sob gemini: 17 turnos custaram 50
+chamadas e 199.338 tokens de prompt por passada (~2,9 chamadas e ~11,7 mil
+tokens por turno). Os 9 cenários da leva 2 somam 31 turnos → ~90 chamadas e
+~363 mil tokens de prompt por passada, ~1,09 milhão nas três →
+**US$ 0,25 na rodada inteira**, contra US$2,80 disponíveis. Cabe com ~11× de
+folga; a projeção de tokens é piso (três cenários têm 5-6 turnos), mas
+precisaria errar por uma ordem de grandeza para apertar.
+
+Colateral que vale saber: o luna custa **3,75× menos por token de prompt** que
+o gemini, e nos três cenários medidos em 02/09 também gastou MENOS tokens. A
+troca de modelo barateou a operação nas duas pontas.
+
+Refaça esta medição antes de disparar (`GET /api/v1/auth/key` com a chave do
+`.env`, e `GET /api/v1/models` para o preço) — saldo é estado, não constante.
+
+**Ordem dos 9, por valor e não por número**, para que uma rodada interrompida
+deixe medido o que mais importa: `grade-do-profissional` e
+`configuracao-multiprofissional` primeiro (o segundo é pré-requisito de
+lançamento), depois `agenda-unica-um-por-vez`, `bot-a-bot-desengajar`,
+`cancelamento-correto`, `remarcacao`, `horario-de-outra-pessoa`,
+`duplicidade`, `precisa-verificar-novamente`. São nove — confira contra o
+`grep` acima antes de rodar, e não contra esta lista.
 
 **O que NÃO precisa entrar nesta rodada: remedir os 6 cenários da v1.** Os
 tetos deles foram calibrados sob gemini, e a troca para `openai/gpt-5.6-luna`
