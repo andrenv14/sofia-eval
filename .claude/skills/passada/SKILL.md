@@ -169,6 +169,22 @@ vermelho. Verde dos dois jeitos = a asserção não mede o que afirma medir. Ver
 
 ### A calibração pendente da leva 2 — ordem pronta para disparar
 
+> **ESTADO EM 03/09: PAUSADA — não é fracasso, e os 9 NÃO estão declarados sem
+> teto.** Motivo: o 429 deixou de ser intermitente e virou persistente no fim
+> da tarde — **6 passadas seguidas degradaram**, sem nenhuma conversa saudável
+> para medir (8 degradações no total: 4 na iteração 1, 3 na 2, 1 na 3).
+> Declarar "sem teto, 429 em 03/09" carimbaria uma medição feita sob um código
+> que está prestes a mudar.
+>
+> **Condição de retomada:** a fatia de RETENTATIVA de erro transitório entrar
+> em produção no `sofia-bot` (autorizada em 03/09; decisão da guia). O eval
+> roda contra o servidor real, então turno que degrada hoje é candidato a
+> completar depois dela — e teto medido sob o código que VAI para produção
+> vale mais que teto medido sob o que está saindo.
+>
+> **Ao retomar, comece no passo 3** (o passo 2 está concluído). Os passos 1 e 2
+> não precisam ser refeitos; o passo 1 é barato e vale rodar mesmo assim.
+
 **Destravada em 03/09.** Estava bloqueada até a guarda de
 `completion.choices[0]` (`openrouter.js`, `handleUserMessage`) entrar em
 produção — passada que morre em `TypeError` não mede nada. Ela entrou: merge
@@ -238,6 +254,18 @@ aplicada um nível acima: um cenário pode COMPLETAR e ainda assim não estar
 medindo o que se pensa.
 
 **Passo 3 — controle de sensibilidade dos cenários que nascem VERDES.**
+
+*Estado em 03/09, para quem retomar não repetir trabalho nem herdar conclusão
+que não existe:*
+
+- **`grade-do-profissional`: INCONCLUSIVO — não reprovado.** Quebrado de
+  propósito e rodado 6 vezes; nenhuma passada produziu conversa saudável.
+  Nunca foi visto VERMELHO, e também nunca foi visto verde de forma limpa. A
+  primeira tentativa deu PASSOU, mas era o verde falso do turno parcialmente
+  degradado — hoje ela sairia ERRO. **Refazer do zero ao retomar.**
+- **`agenda-unica-um-por-vez`: NÃO TENTADO.** Não cheguei a rodá-lo: com tudo
+  degradando, gastar turno nele mediria o 429, não o cenário.
+
 São dois: `grade-do-profissional` e `agenda-unica-um-por-vez`. Cada um traz
 no próprio YAML a instrução exata de como quebrá-lo; em resumo, no
 `agenda-unica-um-por-vez` é remover o item de `agenda_ocupada`, e sem ele a
