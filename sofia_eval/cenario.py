@@ -12,6 +12,8 @@ from pathlib import Path
 
 import yaml
 
+from . import datas
+
 # ---- Esquemas fechados -------------------------------------------------
 # Cada entrada: nome -> (tipos aceitos, obrigatória?)
 
@@ -52,6 +54,32 @@ PROFISSIONAL = {
     "nome": (str, True),
     "service_duration_minutes": (int, False),
     "sort_order": (int, False),
+    # Grade de disponibilidade do profissional — regra recorrente semanal e
+    # exceções pontuais (migration_2026-08-15_disponibilidade_profissionais).
+    # CUIDADO, é armadilha: `temGradeConfigurada` (availability.js) liga a
+    # restrição se houver QUALQUER linha em QUALQUER das duas tabelas. Ou
+    # seja, semear UMA regra de segunda deixa o profissional indisponível de
+    # terça a domingo. Profissional sem nenhuma linha não é restringido —
+    # é o padrão de todos os cenários que não usam estas chaves.
+    "grade": (list, False),
+    "excecoes": (list, False),
+}
+
+GRADE = {
+    # 0=domingo .. 6=sábado, mesma convenção de `tenants.working_days`.
+    "dia_semana": (int, True),
+    "hora_inicio": (str, True),
+    "hora_fim": (str, True),
+}
+
+EXCECAO = {
+    "data": ((str, int), True),
+    "hora_inicio": (str, True),
+    "hora_fim": (str, True),
+    # `bloqueio` fecha horário que a regra recorrente abriria; `liberacao`
+    # abre horário que ela não cobre. Exceção SEMPRE vence a regra
+    # (availability.js, `slotPermitidoPelaGrade`).
+    "tipo": (str, True),
 }
 
 OCUPADO = {
@@ -114,6 +142,48 @@ class ErroDeCenario(Exception):
     pass
 
 
+def _minutos(valor, caminho, onde) -> int:
+    """'HH:MM' -> minutos desde meia-noite, ou erro de cenário.
+
+    Existe para as janelas de grade serem conferidas AQUI, e não pelo
+    Postgres no meio da execução: as duas tabelas têm `CHECK (hora_fim >
+    hora_inicio)`, e violar isso na semeadura estoura com erro cru de driver
+    depois que a rodada já começou a gastar token."""
+    texto = str(valor).strip()
+    # 'HH:MM' e 'HH:MM:SS' — o segundo formato é o que o Postgres devolve, e é
+    # o que sai no JSON de evidência; recusá-lo faria copiar um valor da
+    # evidência de volta para um YAML quebrar a validação sem motivo.
+    partes = texto.split(":")
+    if not 2 <= len(partes) <= 3:
+        raise ErroDeCenario(
+            f"{caminho}: `{onde}` deveria ser um horário 'HH:MM' ou 'HH:MM:SS', veio {valor!r}"
+        )
+    try:
+        h, m = int(partes[0]), int(partes[1])
+        s = int(partes[2]) if len(partes) == 3 else 0
+    except ValueError:
+        raise ErroDeCenario(
+            f"{caminho}: `{onde}` deveria ser um horário 'HH:MM' ou 'HH:MM:SS', veio {valor!r}"
+        ) from None
+    # 24:00 é fim-de-dia válido em TIME do Postgres — aceito só redondo.
+    if (h, m, s) == (24, 0, 0):
+        return 24 * 60
+    if not (0 <= h <= 23 and 0 <= m <= 59 and 0 <= s <= 59):
+        raise ErroDeCenario(f"{caminho}: `{onde}` fora de um relógio de 24h: {valor!r}")
+    return h * 60 + m
+
+
+def _validar_janela(bloco, caminho, onde) -> None:
+    """`hora_fim > hora_inicio`, o mesmo CHECK das duas tabelas do sofia-bot."""
+    inicio = _minutos(bloco["hora_inicio"], caminho, f"{onde}.hora_inicio")
+    fim = _minutos(bloco["hora_fim"], caminho, f"{onde}.hora_fim")
+    if fim <= inicio:
+        raise ErroDeCenario(
+            f"{caminho}: `{onde}` tem hora_fim {bloco['hora_fim']!r} <= hora_inicio "
+            f"{bloco['hora_inicio']!r} — o banco recusaria (CHECK hora_fim > hora_inicio)"
+        )
+
+
 def _validar(bloco, esquema, caminho, onde):
     if not isinstance(bloco, dict):
         raise ErroDeCenario(f"{caminho}: `{onde}` deveria ser um mapa, veio {type(bloco).__name__}")
@@ -174,7 +244,43 @@ def carregar(caminho: Path) -> Cenario:
     _validar(tenant, TENANT, caminho, "tenant")
     profissionais = tenant.pop("profissionais", None) or []
     for i, prof in enumerate(profissionais):
-        _validar(prof, PROFISSIONAL, caminho, f"tenant.profissionais[{i}]")
+        onde_prof = f"tenant.profissionais[{i}]"
+        _validar(prof, PROFISSIONAL, caminho, onde_prof)
+
+        for j, regra in enumerate(prof.get("grade") or []):
+            onde = f"{onde_prof}.grade[{j}]"
+            _validar(regra, GRADE, caminho, onde)
+            if not 0 <= regra["dia_semana"] <= 6:
+                raise ErroDeCenario(
+                    f"{caminho}: `{onde}.dia_semana` deveria estar entre 0 (domingo) e 6 "
+                    f"(sábado), veio {regra['dia_semana']}"
+                )
+            _validar_janela(regra, caminho, onde)
+
+        for j, excecao in enumerate(prof.get("excecoes") or []):
+            onde = f"{onde_prof}.excecoes[{j}]"
+            _validar(excecao, EXCECAO, caminho, onde)
+            # A data é resolvida aqui, no carregamento, e não só na semeadura:
+            # `tenant.criar` roda FORA do try/finally de `__main__.rodar`, então
+            # um ValueError cru de `datas.resolver` lá derrubaria a execução
+            # inteira — sem tabela, sem relatório e sem limpeza, jogando fora os
+            # cenários que já custaram token. A armadilha concreta é `data: +2`
+            # sem aspas: YAML lê como o inteiro 2, que não é data nenhuma (e
+            # `-2`, também sem aspas, funciona — assimetria silenciosa).
+            try:
+                datas.resolver(excecao["data"], tenant.get("timezone", "America/Sao_Paulo"))
+            except ValueError as err:
+                raise ErroDeCenario(
+                    f"{caminho}: `{onde}.data` — {err}. Datas relativas precisam de aspas "
+                    f'no YAML (`data: "+2"`), senão viram número.'
+                ) from None
+            if excecao["tipo"] not in ("liberacao", "bloqueio"):
+                raise ErroDeCenario(
+                    f"{caminho}: `{onde}.tipo` deveria ser 'liberacao' ou 'bloqueio' "
+                    f"(mesmo CHECK de professional_availability_exceptions), "
+                    f"veio {excecao['tipo']!r}"
+                )
+            _validar_janela(excecao, caminho, onde)
 
     ocupados = bruto.get("agenda_ocupada") or []
     for i, item in enumerate(ocupados):

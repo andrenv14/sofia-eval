@@ -1,0 +1,71 @@
+id: grade-do-profissional
+descricao: >
+  A grade do profissional VALE, e exceção pontual vence a regra recorrente.
+  Este é o cenário que a fila registrou como "grade ignorada sem
+  profissional" — só que pelo lado que ainda dá pra provar. O bug original
+  (profissional não resolvido ⇒ `carregarGradeProfissional` com id falsy ⇒
+  grade inteira ignorada) parece fechado desde a camada 4 de
+  `nome-profissional-obrigatorio.md` (28/08): `resolverProfissionalObrigatorio`
+  (`ai/tools.js`) recusa a ferramenta quando falta `nome_profissional` em
+  tenant com profissional cadastrado, então `professional` nulo só sobra em
+  tenant SEM profissional nenhum — onde ignorar a grade é o certo, não o bug.
+  Isso é leitura de código, não veredito: a fila mantém o item aberto até a
+  investigação original ser reaberta. Enquanto isso, aqui fica a guarda de
+  regressão, que nasce VERDE de propósito — se um dia a grade voltar a ser
+  ignorada, este cenário fica vermelho.
+
+  Determinismo, que é o que torna este cenário possível: a regra recorrente
+  cobre os SETE dias da semana, então não importa em que dia a rodada
+  acontece; e o bloqueio é numa data relativa (`+2`), não num dia da semana.
+  A grade é consultada nos DOIS caminhos — na oferta (`checkAvailability`) e
+  na criação (`horarioContinuaLivre`, chamada por `createEvent`,
+  `googleCalendar.js`) —, então o veredito não depende de o modelo checar
+  disponibilidade antes de tentar marcar.
+
+tenant:
+  service_duration_minutes: 60
+  horario_manha_inicio: "08:00"
+  horario_manha_fim: "12:00"
+  profissionais:
+    - nome: Helena
+      service_duration_minutes: 60
+      # Sete linhas de propósito: com a regra cobrindo todo dia, o único
+      # motivo possível de recusa às 9h de `+2` é a exceção abaixo — não "hoje
+      # calhou de cair num dia sem regra".
+      grade:
+        - { dia_semana: 0, hora_inicio: "08:00", hora_fim: "18:00" }
+        - { dia_semana: 1, hora_inicio: "08:00", hora_fim: "18:00" }
+        - { dia_semana: 2, hora_inicio: "08:00", hora_fim: "18:00" }
+        - { dia_semana: 3, hora_inicio: "08:00", hora_fim: "18:00" }
+        - { dia_semana: 4, hora_inicio: "08:00", hora_fim: "18:00" }
+        - { dia_semana: 5, hora_inicio: "08:00", hora_fim: "18:00" }
+        - { dia_semana: 6, hora_inicio: "08:00", hora_fim: "18:00" }
+      excecoes:
+        # Folga pontual: fecha exatamente o slot que a regra recorrente
+        # abriria. Exceção tem prioridade sobre a regra (availability.js).
+        - data: "+2"
+          hora_inicio: "09:00"
+          hora_fim: "10:00"
+          tipo: bloqueio
+
+turnos:
+  # O nome da profissional é repetido no turno de confirmação de propósito.
+  # Sem ele, o modelo pode chamar a ferramenta sem `nome_profissional`, e aí
+  # `resolverProfissionalObrigatorio` recusa ANTES de a grade ser consultada —
+  # o cenário ficaria verde sem ter exercitado o que ele guarda.
+  - "quero marcar com a helena depois de amanhã às 9h"
+  - "pode confirmar às 9h com a helena mesmo, meu nome é Marcos Vieira"
+
+verificacoes:
+  # Verde AQUI é evidência fraca por natureza: "nenhum agendamento" é o mesmo
+  # resultado de várias causas — grade respeitada (o que se quer), recusa por
+  # `nome_profissional` faltando, ou o modelo simplesmente não tentando. O que
+  # separa é o dossiê: transcrição no relatório HTML, e — quando falha — a
+  # grade semeada no JSON de evidência, que passou a capturar
+  # `professional_availability` e as exceções justamente por causa deste
+  # cenário. Vermelho aqui, sim, é inequívoco: a grade foi ignorada.
+  agendamentos: 0
+  sem_agendamento_novo: true
+  # Tetos de custo ainda NÃO medidos — pendente 3 passadas sob o modelo
+  # declarado, e pendente a guarda em torno de `completion.choices[0]`
+  # (achado de 02/09, `openrouter.js`, `handleUserMessage`).

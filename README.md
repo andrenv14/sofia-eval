@@ -299,6 +299,42 @@ Aceita as colunas de configuração de agendamento (`timezone`,
 `profissionais` (`nome`, `service_duration_minutes`, `sort_order`). O resto é
 preenchido com os mesmos padrões de `tests/helpers/fixtures.js` do `sofia-bot`.
 
+Cada profissional aceita ainda `grade` (regra recorrente semanal) e `excecoes`
+(pontuais), que semeiam `professional_availability` e
+`professional_availability_exceptions`:
+
+```yaml
+profissionais:
+  - nome: Helena
+    grade:
+      - dia_semana: 1          # 0=domingo .. 6=sábado, igual a working_days
+        hora_inicio: "08:00"
+        hora_fim: "18:00"
+    excecoes:
+      - data: "+2"             # +N, hoje, ou AAAA-MM-DD — sempre entre aspas
+        hora_inicio: "09:00"
+        hora_fim: "10:00"
+        tipo: bloqueio         # bloqueio | liberacao
+```
+
+Três coisas que mordem, todas conferidas na validação antes de gastar token:
+
+- **Semear QUALQUER linha liga a restrição.** `temGradeConfigurada`
+  (`sofia-bot`, `availability.js`) só olha se existe alguma linha, em qualquer
+  das duas tabelas. Uma regra só de segunda deixa o profissional indisponível
+  de terça a domingo. Profissional sem grade nenhuma segue irrestrito — é o
+  caso de todos os cenários que não usam estas chaves.
+- **Exceção vence regra recorrente**, sempre: `bloqueio` que sobrepõe o slot
+  fecha; `liberacao` que cobre o slot inteiro abre, mesmo sem regra nenhuma
+  naquele dia.
+- **Data relativa precisa de aspas.** `data: +2` sem aspas o YAML lê como o
+  número 2, que não é data nenhuma — a validação recusa, nomeando arquivo e
+  índice. Já `data: -2` sem aspas **passa**, porque vira o número -2 e o texto
+  `-2` é uma data relativa válida (dois dias atrás). A armadilha é
+  assimétrica, e a validação não tem como desfazer isso: quando o YAML chega
+  aqui, `+2` já virou `2` e a informação do sinal se perdeu. Escreva sempre
+  entre aspas.
+
 `openrouter_model` (opcional) declara o modelo sob avaliação **no cenário**, em
 vez de deixá-lo implícito no `.env` do `sofia-bot`. Sem declarar, o tenant nasce
 com a coluna NULA e herda o `OPENROUTER_MODEL` de lá — mesmo comportamento de
@@ -347,12 +383,12 @@ tráfego real. Nada inventado.
 
 ### Leva 2 — vocabulário fechado, tetos de custo AINDA NÃO medidos
 
-Os sete cenários abaixo passam na validação de esquema (`--lista`) e usam só
+Os oito cenários abaixo passam na validação de esquema (`--lista`) e usam só
 chaves já existentes ou as duas novas desta leva (`respostas_assistente_max`,
 `agendamento_status`). Nenhum deles fixou `chamadas_ia_max`/`tokens_prompt_max`
 ainda — falta a passada de 3 execuções que a seção "De onde vêm os tetos de
 custo" exige, e falta primeiro a guarda em torno de `completion.choices[0]`
-entrar no `sofia-bot` (achado de 02/09, ver `AGENTS.md`) — calibrar contra um
+entrar no `sofia-bot` (achado de 02/09 — `openrouter.js`, `handleUserMessage`; ver `AGENTS.md`) — calibrar contra um
 bug de infra gastaria token medindo o número errado.
 
 | Cenário | O que prova |
@@ -364,23 +400,20 @@ bug de infra gastaria token medindo o número errado.
 | `duplicidade` | pedir o mesmo horário duas vezes não vira duas linhas, robusto ao caminho que o modelo escolher |
 | `configuracao-multiprofissional` | 4 profissionais, agenda única — nome resolve pra duração certa, dois profissionais não colidem no mesmo horário (dados fictícios, anonimizado) |
 | `precisa-verificar-novamente` | modelo não inventa confirmação em cima do "tenta de novo" ambíguo de `createEvent` — intermitente por natureza, ver descrição do YAML |
+| `grade-do-profissional` | a grade do profissional vale, e exceção pontual vence a regra recorrente — guarda de regressão, nasce VERDE de propósito |
 
-**Não escrito ainda:** `grade ignorada sem profissional`. Duas coisas
-bloqueiam, achadas ao tentar escrever: (1) `resolverProfissionalObrigatorio`
-(`sofia-bot/src/ai/tools.js`) recusa QUALQUER tool call de agenda sem
-`nome_profissional` sempre que o tenant tem profissional cadastrado — o
-`professional` só chega `null` em `checkAvailability`/`createEvent` quando o
-tenant não tem NENHUM profissional, caso em que ignorar a grade é o
-comportamento correto, não o bug. Pelo código lido, o bug como a fila descreve
-parece já fechado pela camada 4 de `nome-profissional-obrigatorio.md`
-(28/08) — não confirmei contra a entrada de `LOG.md` que a fila cita, não
-achei pelo nome. (2) Mesmo que não estivesse fechado, `sofia_eval` não tem
-mecanismo de semeadura para `professional_availability` — sem popular essa
-tabela, um profissional nunca tem grade restrita pra violar
-(`temGradeConfigurada` sempre `false`, `slotPermitidoPelaGrade` sempre libera
-por desenho). As duas coisas juntas tornam este cenário inescrevível hoje sem
-decisão prévia: confirmar se o bug segue vivo, e desenhar a seção de
-`agenda_ocupada`/`tenant` que semearia `professional_availability`.
+**Sobre o item `grade ignorada sem profissional` da fila:** virou
+`grade-do-profissional`, e mudou de natureza no caminho. O bug original
+(profissional não resolvido ⇒ grade ignorada) parece **fechado**:
+`resolverProfissionalObrigatorio` (`sofia-bot`, `src/ai/tools.js`) recusa a
+ferramenta de agenda quando falta `nome_profissional` em tenant com
+profissional cadastrado, então `professional` nulo só sobra em tenant SEM
+profissional nenhum — onde ignorar a grade é o comportamento correto, não o
+bug. Isso é leitura de código, não veredito, e a fila mantém o item aberto até
+a investigação original ser reaberta. O cenário entrou pelo lado que ainda dá
+para provar: que a grade É consultada quando o profissional está resolvido, e
+que exceção vence regra recorrente. Nasce verde — guarda de regressão, não
+achado.
 
 ### O vermelho conhecido fechou — e virou regressão
 

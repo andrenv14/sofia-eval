@@ -5,6 +5,8 @@ de propósito — se lá muda, aqui tem de mudar junto, senão um cenário herda
 estado do anterior.
 """
 
+from . import datas
+
 # Espelha tests/setup.js do sofia-bot (RESTART IDENTITY CASCADE inclusive).
 TABELAS = (
     "coex_invites, appointments, mensagens_pendentes, messages, ai_usage, "
@@ -71,11 +73,12 @@ def criar(conn, cenario, cfg) -> dict:
     ).fetchone()
 
     for i, prof in enumerate(cenario.profissionais):
-        conn.execute(
+        profissional = conn.execute(
             """
             INSERT INTO professionals (tenant_id, name, google_calendar_id, active, sort_order,
                                        service_duration_minutes)
             VALUES (%s, %s, %s, true, %s, %s)
+            RETURNING id
             """,
             (
                 linha["id"],
@@ -85,6 +88,42 @@ def criar(conn, cenario, cfg) -> dict:
                 # NULL = herda a duração do tenant, igual à fixture do sofia-bot.
                 prof.get("service_duration_minutes"),
             ),
-        )
+        ).fetchone()
+        _semear_grade(conn, profissional["id"], prof, linha["timezone"])
 
     return linha
+
+
+def _semear_grade(conn, professional_id: int, prof: dict, timezone: str) -> None:
+    """Regra recorrente semanal e exceções pontuais de UM profissional.
+
+    As duas tabelas já estão em `TABELAS` (o TRUNCATE de entrada as limpa), e
+    a semeadura tem de ficar simétrica com isso: tabela semeada e não
+    truncada vaza estado de um cenário para o seguinte.
+
+    Semear QUALQUER linha aqui liga a restrição por grade para este
+    profissional — `temGradeConfigurada` (availability.js) só olha se existe
+    alguma linha, em qualquer das duas tabelas. Profissional sem grade
+    nenhuma continua irrestrito, que é o caso de todos os cenários que não
+    usam estas chaves."""
+    for regra in prof.get("grade") or []:
+        conn.execute(
+            """
+            INSERT INTO professional_availability (professional_id, dia_semana, hora_inicio, hora_fim)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (professional_id, regra["dia_semana"], regra["hora_inicio"], regra["hora_fim"]),
+        )
+
+    for excecao in prof.get("excecoes") or []:
+        # Data relativa (`+2`, `hoje`) resolvida no fuso do tenant, igual à de
+        # `agenda_ocupada` — cenário com data fixa envelhece.
+        dia = datas.resolver(excecao["data"], timezone)
+        conn.execute(
+            """
+            INSERT INTO professional_availability_exceptions
+                        (professional_id, data, hora_inicio, hora_fim, tipo)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (professional_id, dia, excecao["hora_inicio"], excecao["hora_fim"], excecao["tipo"]),
+        )

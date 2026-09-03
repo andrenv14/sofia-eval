@@ -22,11 +22,13 @@ descricao: >
   `nome-profissional-obrigatorio.md` recusa isso com erro cru de Postgres —
   a semeadura estoura antes do primeiro turno.
 
-  FORA deste cenário: exceção de agenda por profissional
-  (`professional_availability_exceptions`). `sofia_eval` não tem hoje
-  mecanismo de semeadura para essa tabela nem para `professional_availability`
-  — `cenario.py`/`agenda.py` só cobrem `appointments`, via `agenda_ocupada`.
-  Item em aberto, registrado à parte — não é lacuna deste cenário específico.
+  FORA deste cenário, mas não mais impossível: grade e exceção por
+  profissional. Desde a semeadura de `professional_availability` /
+  `_exceptions` (chaves `grade` e `excecoes` em `tenant.profissionais[]`),
+  quem prova esse lado é o `grade-do-profissional`. Aqui os quatro seguem
+  SEM grade de propósito — profissional sem nenhuma linha não é restringido
+  (`temGradeConfigurada`), e é isso que mantém este cenário medindo só
+  resolução de nome e duração, sem a grade interferir no veredito.
 
 tenant:
   service_duration_minutes: 30
@@ -68,5 +70,5 @@ verificacoes:
     telefone: contato
   # Tetos de custo ainda NÃO medidos — pendente 3 passadas sob o modelo
   # declarado, e pendente a guarda em torno de `completion.choices[0]`
-  # (achado de 02/09, `openrouter.js:110`) entrar antes de gastar token
+  # (achado de 02/09, `openrouter.js`, `handleUserMessage`) entrar antes de gastar token
   # calibrando contra um bug de infra.

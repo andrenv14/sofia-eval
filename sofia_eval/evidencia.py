@@ -39,6 +39,16 @@ COLUNAS_PROFESSIONALS = (
 )
 COLUNAS_MESSAGES = ("id", "contact_phone", "role", "content", "created_at")
 
+# Grade do profissional: nenhuma das duas tabelas tem `tenant_id`, então a
+# captura passa por `professionals`. Entram porque um cenário de grade
+# (`grade-do-profissional`) tem o veredito inteiro decidido por elas — sem
+# isso, a evidência mostraria "nenhum agendamento" sem mostrar a regra que
+# recusou, que é justamente o que se quer ler quando esse cenário falha.
+COLUNAS_GRADE = ("id", "professional_id", "dia_semana", "hora_inicio", "hora_fim", "criado_em")
+COLUNAS_EXCECOES = (
+    "id", "professional_id", "data", "hora_inicio", "hora_fim", "tipo", "criado_em",
+)
+
 
 def capturar(conn, tenant, cenario, resultado) -> str:
     """Grava o estado do tenant em JSON e devolve o caminho, ou None se não deu.
@@ -105,6 +115,12 @@ def _coletar(conn, tenant, cenario, resultado) -> dict:
         "professionals": _tabela(conn, "professionals", COLUNAS_PROFESSIONALS, tid),
         "messages": _tabela(conn, "messages", COLUNAS_MESSAGES, tid),
         "ai_usage": _uso_de_ia(conn, tid),
+        "professional_availability": _tabela_por_profissional(
+            conn, "professional_availability", COLUNAS_GRADE, tid
+        ),
+        "professional_availability_exceptions": _tabela_por_profissional(
+            conn, "professional_availability_exceptions", COLUNAS_EXCECOES, tid
+        ),
     }
 
 
@@ -112,6 +128,23 @@ def _tabela(conn, nome: str, colunas, tenant_id: int) -> list:
     """Todas as linhas do tenant, em ordem de id — cronológica, é serial."""
     return conn.execute(
         f"SELECT {', '.join(colunas)} FROM {nome} WHERE tenant_id = %s ORDER BY id",
+        (tenant_id,),
+    ).fetchall()
+
+
+def _tabela_por_profissional(conn, nome: str, colunas, tenant_id: int) -> list:
+    """Igual a `_tabela`, para as tabelas que se ligam ao tenant pelo
+    profissional — `professional_availability` e as exceções não têm
+    `tenant_id` próprio."""
+    campos = ", ".join(f"t.{c}" for c in colunas)
+    return conn.execute(
+        f"""
+        SELECT {campos}
+          FROM {nome} t
+          JOIN professionals p ON p.id = t.professional_id
+         WHERE p.tenant_id = %s
+         ORDER BY t.id
+        """,
         (tenant_id,),
     ).fetchall()
 
