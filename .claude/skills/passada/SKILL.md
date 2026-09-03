@@ -114,6 +114,31 @@ Bloqueada até a guarda de `completion.choices[0]` (`openrouter.js`,
 `handleUserMessage`) entrar em produção: passada que morre em `TypeError` não
 mede nada. Quando entrar, esta é a ordem, sem nada a decidir na hora.
 
+**Passo −1 — ler o corpo que a guarda registrou. NÃO pule para o Passo 0.**
+A guarda **não conserta a causa**; ela converte um `TypeError` que mata o turno
+numa degradação que REGISTRA o que a API devolveu no lugar de `choices`. Ou
+seja: depois do deploy, os cenários que erravam provavelmente vão rodar até o
+fim e **ainda assim reprovar** — só que com uma resposta de desculpa em vez de
+um stack trace. Calibrar em cima disso mede o custo do FRACASSO, não o
+comportamento do cenário: o teto sairia lixo, com cara de número medido.
+
+Então, assim que a guarda entrar: rode **um** dos cenários que reproduziam o
+`TypeError` (`agendamento-executa-nao-descreve`, `cancelar-de-terceiro` ou
+`fora-do-horario`) e leia no log do servidor o corpo registrado. Ele deve
+dizer o que está chegando: erro de provedor, filtro de conteúdo, limite, ou
+resposta vazia. Um cenário, custo desprezível — e é a primeira vez que alguém
+vai ver a causa, que está escondida atrás do erro desde que apareceu.
+
+Com o corpo na mão, decida:
+- **causa com contorno** → aplica-se, e a calibração roda com conversa real;
+- **sem contorno** → a calibração roda só nos cenários que COMPLETAM, e os
+  outros ficam declarados sem teto, com o motivo escrito. Isso é honesto;
+  teto medido sobre conversa quebrada não é.
+
+Regra da guia, 03/09. É a mesma distinção de ERRO ≠ FALHOU do `AGENTS.md`,
+aplicada um nível acima: um cenário pode COMPLETAR e ainda assim não estar
+medindo o que se pensa.
+
 **Passo 0 — controle de sensibilidade dos cenários que nascem VERDES.**
 São dois: `grade-do-profissional` e `agenda-unica-um-por-vez`. Cada um traz
 no próprio YAML a instrução exata de como quebrá-lo; em resumo, no
