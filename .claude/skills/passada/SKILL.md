@@ -103,6 +103,15 @@ declarado. Nunca arredonde para número redondo: número redondo esconde de onde
 veio. O comentário ao lado do teto no YAML tem de dizer data, modelo e os três
 números medidos.
 
+**Passada com turno DEGRADADO não conta para as três — repete, e a repetição
+fica registrada.** Turno degradado é a assinatura `chamadas_ia > 0` com
+`prompt_tokens = 0`: o modelo não respondeu (429 — ver passo 2), a chamada foi
+contada e nenhum token de prompt somou. Confira **por linha, nunca pela soma**:
+cenário com turnos bons e degradados misturados escapa do agregado. Desde
+`eefc598` o eval detecta a assinatura sozinho e o cenário sai **ERRO** antes de
+qualquer verificação rodar — a regra existe para o que vem DEPOIS disso: três
+passadas com uma degradada no meio dão um teto envenenado sem ninguém notar.
+
 Cenário que nasce VERDE precisa, antes de contar como guarda, do **controle de
 sensibilidade**: quebre de propósito a condição que ele guarda, rode, e veja o
 vermelho. Verde dos dois jeitos = a asserção não mede o que afirma medir. Ver
@@ -110,9 +119,18 @@ vermelho. Verde dos dois jeitos = a asserção não mede o que afirma medir. Ver
 
 ### A calibração pendente da leva 2 — ordem pronta para disparar
 
-Bloqueada até a guarda de `completion.choices[0]` (`openrouter.js`,
-`handleUserMessage`) entrar em produção: passada que morre em `TypeError` não
-mede nada. Quando entrar, esta é a ordem, sem nada a decidir na hora.
+**Destravada em 03/09.** Estava bloqueada até a guarda de
+`completion.choices[0]` (`openrouter.js`, `handleUserMessage`) entrar em
+produção — passada que morre em `TypeError` não mede nada. Ela entrou: merge
+`cee3876` no `sofia-bot`, 03/09 04:45 UTC.
+
+Para quem for procurá-la: a guarda é a **condição** `!choice?.message`, logo
+depois de `const choice = completion?.choices?.[0]`. Não é a ausência de
+`choices` — a forma real `choices: [{ finish_reason: 'error' }]` TEM `choices` —
+e não é a função `resumirRespostaSemChoices`, que só formata o resumo dentro do
+`console.error`.
+
+Esta é a ordem, sem nada a decidir na hora.
 
 A ordem é barata→cara de propósito: cada passo elimina uma hipótese antes que
 a seguinte custe janela ou token. (Renumerado em 03/09; onde as mensagens
@@ -133,26 +151,37 @@ passadas obriga a voltar e checar, gastando janela.
 
 (Usa o `sofia_test`, então vale a trava de recurso do passo 0.)
 
-**Passo 2 — ler o corpo que a guarda registrou. NÃO pule para o passo 3.**
-A guarda **não conserta a causa**; ela converte um `TypeError` que mata o turno
-numa degradação que REGISTRA o que a API devolveu no lugar de `choices`. Ou
-seja: depois do deploy, os cenários que erravam provavelmente vão rodar até o
-fim e **ainda assim reprovar** — só que com uma resposta de desculpa em vez de
-um stack trace. Calibrar em cima disso mede o custo do FRACASSO, não o
-comportamento do cenário: o teto sairia lixo, com cara de número medido.
+**Passo 2 — ler o corpo que a guarda registrou. ✔ CONCLUÍDO em 03/09; a
+sessão que retomar começa no passo 3.**
 
-Então, assim que a guarda entrar: rode **um** dos cenários que reproduziam o
+O que este passo existia para descobrir, e descobriu: **o corpo sem choice
+utilizável é `error.code=429`, limite de requisição.** Não é moderação, apesar
+de o comentário do próprio `openrouter.js` levantar esse caminho como "real"; e
+não é saldo da chave, que não é free tier e não foi debitada pelas chamadas 429.
+Bug aberto desde 15/08, fechado aqui.
+
+**E o 429 é INTERMITENTE** — este é o achado que muda a calibração, não o nome
+do erro. Mesma chave, mesmo modelo: uma passada degradada e as duas seguintes
+normais (3 chamadas/11.310 tokens, e 2/3.754). Intermitente é PIOR que
+permanente, porque envenena algumas passadas em silêncio em vez de derrubar
+todas. É de onde vem a regra da passada degradada, lá em cima.
+
+Por que o passo existia — continua valendo se o caso voltar: a guarda **não
+conserta a causa**, ela converte um `TypeError` que mata o turno numa degradação
+que REGISTRA o que a API devolveu. O cenário passa a rodar até o fim, e o
+veredito vira uma afirmação sobre o SILÊNCIO do modelo, não sobre
+comportamento — calibrar em cima disso mede o custo do FRACASSO com cara de
+número medido. Para reproduzir: rode **um** dos cenários que reproduziam o
 `TypeError` (`agendamento-executa-nao-descreve`, `cancelar-de-terceiro` ou
-`fora-do-horario`) e leia no log do servidor o corpo registrado. Ele deve
-dizer o que está chegando: erro de provedor, filtro de conteúdo, limite, ou
-resposta vazia. Um cenário, custo desprezível — e é a primeira vez que alguém
-vai ver a causa, que está escondida atrás do erro desde que apareceu.
+`fora-do-horario`) e procure no log do servidor a linha
+`resposta sem choice utilizável`.
 
-Com o corpo na mão, decida:
-- **causa com contorno** → aplica-se, e a calibração roda com conversa real;
-- **sem contorno** → a calibração roda só nos cenários que COMPLETAM, e os
-  outros ficam declarados sem teto, com o motivo escrito. Isso é honesto;
-  teto medido sobre conversa quebrada não é.
+Decisão tomada, com o corpo na mão: **causa com contorno** — o contorno é
+repetir a passada degradada, justamente porque o 429 é intermitente; a
+calibração roda com conversa real. A alternativa continua escrita para o dia em
+que a causa não tiver contorno: calibrar só os cenários que COMPLETAM e declarar
+os outros sem teto, com o motivo escrito. Isso é honesto; teto medido sobre
+conversa quebrada não é.
 
 Regra da guia, 03/09. É a mesma distinção de ERRO ≠ FALHOU do `AGENTS.md`,
 aplicada um nível acima: um cenário pode COMPLETAR e ainda assim não estar
@@ -164,16 +193,17 @@ no próprio YAML a instrução exata de como quebrá-lo; em resumo, no
 `agenda-unica-um-por-vez` é remover o item de `agenda_ocupada`, e sem ele a
 marcação DEVE acontecer e o cenário ficar vermelho.
 
-No `grade-do-profissional`: Antes das
-passadas de medição, e não depois. Remova (ou desloque de hora) a exceção
-`bloqueio` do YAML e rode só esse cenário: sem o bloqueio das 9h a marcação
-DEVE acontecer, `agendamentos` vira 1, e o cenário **tem de ficar VERMELHO**.
+No `grade-do-profissional`, e antes das passadas de medição, não depois:
+remova (ou desloque de hora) a exceção `bloqueio` do YAML e rode só esse
+cenário. Sem o bloqueio das 9h a marcação DEVE acontecer, `agendamentos` vira 1, e o cenário **tem de ficar VERMELHO**.
 Se ficar verde, ele não entra na leva e o achado vale mais que a calibração.
 Restaure o YAML e registre o resultado no relato.
 
 **Passo 4 — 3 passadas dos 9 cenários sem teto**, com o modelo declarado na
 subida. Fonte da verdade sobre quem falta é o YAML, não uma lista escrita
 aqui, que envelhece: cenário sem `chamadas_ia_max` é cenário sem teto.
+Passada que voltar com ERRO por turno degradado **não conta** — repete, e a
+repetição fica registrada (regra no começo desta seção).
 Levantar a lista sem gastar nada — casando a CHAVE, não a string:
 
 ```bash
