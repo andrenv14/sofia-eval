@@ -4,3 +4,21 @@ __pycache__/
 .venv/
 venv/
 .vscode/
+
+# Configuração LOCAL do Claude Code — nunca versionada.
+#
+# `settings.local.json` guarda a lista de permissões da máquina de quem
+# trabalha, e ela acumula comandos concretos: caminhos, host e usuário de
+# SSH/scp da VPS. Este repositório é PÚBLICO, então isso não pode entrar num
+# commit por descuido.
+#
+# Até 03/09/2026 quem segurava esses dois arquivos era só configuração da
+# MÁQUINA — o ignore global do usuário e o `.git/info/exclude`, nenhum dos
+# dois versionado. Clone em outra máquina, runner de CI, ou o global sumindo,
+# e os arquivos voltavam a ser untracked comuns, a um `git add -A` de serem
+# publicados. Aqui a proteção viaja junto com o código.
+#
+# O que CONTINUA versionado de propósito: `settings.json`, `hooks/` e
+# `skills/` — configuração compartilhada do projeto, que serve a quem clona.
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

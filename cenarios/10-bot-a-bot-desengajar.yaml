@@ -1,6 +1,7 @@
 id: bot-a-bot-desengajar
 descricao: >
-  Achado de tráfego real (31/08, tenant <id>, contato <número omitido>): a Sofia
+  Achado de tráfego real (31/08, em produção — número omitido, é de uma
+  pessoa de verdade e este repositório é público): a Sofia
   trocou 4 mensagens com o robô de menu de outra empresa, detectou a
   automação DUAS VEZES explicitamente e mesmo assim continuou respondendo —
   a troca só acabou porque o OUTRO bot transferiu para humano. O loop-guard

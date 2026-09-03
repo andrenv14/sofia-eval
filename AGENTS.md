@@ -70,7 +70,7 @@ calibração, não por comportamento — os dois viram vermelho igual na tabela,
 mas significam coisas diferentes. Ao fechar cenário novo, o comentário ao
 lado do teto no YAML tem de dizer data, modelo e os três números medidos —
 é o padrão já usado em `cenarios/01` a `04`. Cenário sem teto medido (leva 2,
-em `cenarios/07` a `13` neste momento) é intencionalmente incompleto: omitir
+em `cenarios/07` a `14` neste momento) é intencionalmente incompleto: omitir
 é honesto, fabricar número não é.
 
 ## Cenário que nasce verde precisa de prova de sensibilidade
@@ -88,8 +88,8 @@ condição que ele guarda, rode, e veja o vermelho**. Depois restaure e
 registre o resultado. Ex.: em `grade-do-profissional`, remover a exceção de
 bloqueio tem de fazer o agendamento acontecer e o cenário reprovar. Se ficar
 verde dos dois jeitos, a asserção é decoração — e aí o achado é maior que o
-cenário. Regra da guia, 02/09, depois de dois bloqueadores custarem caro por
-previsão tratada como medição.
+cenário. Regra da guia, 03/09 (os rótulos de dia deste projeto seguem UTC),
+depois de dois bloqueadores custarem caro por previsão tratada como medição.
 
 ## O modelo sob avaliação é declarado, não ambiente
 
