@@ -153,6 +153,27 @@ def rodar(conn, cliente, calendario, cfg, c) -> relatorio.Resultado:
                 banco.resposta_da_assistente(conn, tenant["id"], c.contato),
             )
         else:
+            # Turno degradado é ERRO, não veredito — e tem de ser conferido
+            # ANTES das verificações, senão vira VERDE FALSO: sem resposta do
+            # modelo, `agendamentos: 0` e `sem_agendamento_novo: true` ficam
+            # satisfeitos por vacuidade. Medido em 03/09 com o modelo sob
+            # rate limit (429): 2 chamadas, 0 tokens, cenário PASSOU.
+            degradados = banco.turnos_degradados(conn, tenant["id"])
+            if degradados:
+                custo = banco.custo(conn, tenant["id"])
+                print(relatorio.ERRO)
+                resultado = relatorio.Resultado(
+                    c.id, relatorio.ERRO,
+                    [f"{degradados} turno(s) degradado(s): a API respondeu sem choice utilizável "
+                     "(chamada registrada, zero token de prompt). O modelo não respondeu — "
+                     "qualquer veredito aqui seria sobre o silêncio, não sobre o comportamento. "
+                     "O motivo estruturado está no log do servidor: procure "
+                     "'resposta sem choice utilizável'."],
+                    custo, time.monotonic() - comeco,
+                    banco.resposta_da_assistente(conn, tenant["id"], c.contato),
+                )
+                return resultado
+
             falhas, custo, checagens = verificacoes.aplicar(conn, tenant, c, ids_antes)
             resultado = relatorio.Resultado(
                 c.id,
