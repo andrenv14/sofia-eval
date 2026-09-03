@@ -110,6 +110,28 @@ publicado continua legível por `git log -p` e pela página do commit, e
 removê-lo num commit posterior **não o despublica**. Para essa pergunta, o
 instrumento é `git log --all -S` / `git grep <padrão> $(git rev-list --all)`.
 
+## Escreva o que o verde NÃO diz, junto da asserção
+
+Parente da regra acima, e distinta dela: lá o risco é a asserção não conseguir
+falhar; aqui é ela conseguir falhar, passar honestamente, e ainda assim ser
+**lida como uma afirmação mais larga do que sustenta**.
+
+O eval roda sempre com a SUA configuração — sua agenda conectada, seu tenant,
+seu banco. Então todo verde é da forma "sob esta configuração, o
+comportamento X vale". Quase nunca é da forma "o cliente Y está protegido",
+que é o que quem lê o relatório quer que ele signifique, especialmente quando
+o cenário é portão de lançamento. Exemplo vivo: `agenda-unica-um-por-vez`
+prova que a agenda compartilhada recusa dois profissionais no mesmo horário —
+com a agenda conectada, porque é assim que o eval roda. Num tenant cuja agenda
+NÃO está conectada, essa barreira não existe, e o verde daqui não diz nada
+sobre ele.
+
+**Então: ao lado de toda asserção que possa ser lida de forma mais larga,
+escreva o limite.** Uma linha dizendo o que o verde não afirma vale mais que
+um parágrafo dizendo o que ele afirma. E desconfie de verificação de
+configuração por campo preenchido: campo pode conter marcador que parece valor
+e não é — só chamada real responde "está conectado?".
+
 ## O modelo sob avaliação é declarado, não ambiente
 
 Achado de 02/09: até essa data, `tenant.py` não gravava `openrouter_model` no

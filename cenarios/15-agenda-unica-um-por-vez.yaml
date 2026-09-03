@@ -22,12 +22,26 @@ descricao: >
   segundo.
 
   Consequência que o cenário nasce sabendo, e que é a razão de ele existir:
-  **esta proteção está no Google, não no sistema.** Com a agenda desconectada
-  — que é o caso quando ela não está ligada — não existe barreira nenhuma, e duas
-  pessoas seriam marcadas no mesmo horário. Se este cenário PASSAR, ele
-  confirma a barreira funcionando; se REPROVAR com o agendamento acontecendo,
-  o achado é de produto e vale mais que o cenário: significa que "um por vez"
-  não está garantido por nada verificável.
+  **esta proteção está no Google, não no sistema.** Sem agenda conectada não
+  existe barreira nenhuma, e duas pessoas são marcadas no mesmo horário. Se
+  este cenário REPROVAR com o agendamento acontecendo, o achado é de produto e
+  vale mais que o cenário: significa que "um por vez" não está garantido por
+  nada verificável.
+
+  ATENÇÃO AO QUE O VERDE DAQUI **NÃO** DIZ — e este é o ponto que mais pode
+  custar caro, porque este cenário é portão de lançamento. O eval sempre roda
+  com a agenda DELE conectada. Então o verde afirma exatamente isto, e nada
+  além: *"quando a agenda está conectada, o um-por-vez vale"*. Ele **não**
+  afirma *"o tenant X está protegido"* — lá a proteção só existe se a agenda
+  daquele tenant estiver de fato conectada, o que é outra pergunta, sobre
+  outro sistema, que este cenário não toca.
+
+  E essa outra pergunta não se responde olhando se o campo está preenchido:
+  `google_refresh_token` pode conter um marcador curto que parece valor e não
+  é token nenhum. Verificação de "está conectado?" por campo não-vazio **passa
+  e mente**. A única checagem honesta é uma chamada real ao Google com aquela
+  credencial. Portanto: verde aqui é PRÉ-CONDIÇÃO do portão de lançamento, não
+  o portão. O portão é a chamada real contra o tenant que vai ao ar.
 
   Configuração fiel ao tenant real: quatro profissionais CADASTRADOS, três
   ATIVOS e um inativo. A fila diz "4 profissionais" e isso induz ao erro —
