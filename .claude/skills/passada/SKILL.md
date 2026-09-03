@@ -17,15 +17,38 @@ A suíte Vitest do `sofia-bot` e este eval dividem o `sofia_test`. Rodar os dois
 juntos deu 4 ERROs por contenção em 29/08.
 
 ```bash
-pgrep -fa "vitest|node src/server.js"
+pgrep -af "[v]itest|node [s]rc/server.js"                       # processos
+
+# A URL vive no .env do sofia-bot, não no ambiente desta shell:
+DBURL=$(grep -E '^DATABASE_URL=' ~/sofia-bot/.env | cut -d= -f2- | tr -d "\"' \r")
+psql "$DBURL" -At -c "select count(*) from pg_stat_activity
+  where datname='sofia_test' and pid <> pg_backend_pid();"      # o recurso
 ```
 
-Se aparecer qualquer coisa, **pare e espere**. Havendo sessão-guia coordenando
+**Os colchetes não são firula, e a versão sem eles mentia.** `pgrep -fa
+"vitest|node src/server.js"` casa a PRÓPRIA linha de comando do shell que o
+executa — o padrão está dentro dela. Ele devolve um processo com a janela
+livre, e quem lê conclui "ocupado". Em 03/09 pegou duas sessões no mesmo dia,
+esta e a da VPS. `[v]itest` casa a string `vitest`, mas a linha do shell contém
+`[v]itest` com os colchetes, que o regex não casa: o auto-casamento some.
+
+**E processo é PROXY; o recurso disputado é o BANCO.** A segunda linha responde
+"alguém está conectado no `sofia_test`", não "existe um processo cujo nome
+parece com o de quem usaria o banco" — mede o artefato, não o proxy. O
+`pid <> pg_backend_pid()` exclui a própria consulta.
+
+Se qualquer uma das duas acusar, **pare e espere**. Havendo sessão-guia coordenando
 a máquina, **peça a janela e espere o OK** antes de seguir — inclusive para
 teste de segundos, porque a suíte trunca as tabelas a cada teste.
 
 Barato e vale sempre: `bash .claude/hooks/estado.sh` já responde janela,
 modelo da última rodada e validade do token do Google numa tela só.
+
+Os dois comandos acima foram exercidos NOS DOIS SENTIDOS em 03/09, que é o que
+o `AGENTS.md` exige de qualquer varredura antes de ela valer como prova: sem
+servidor, `pgrep` vazio e 0 conexões; com o `sofia-bot` de pé, `pgrep` acusando
+dois PIDs e 1 conexão no `sofia_test`. Trava que só foi vista dizer "livre" não
+provou que consegue dizer "ocupado".
 
 ## 1. Validar sem gastar token
 
