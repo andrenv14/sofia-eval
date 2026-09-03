@@ -73,6 +73,24 @@ lado do teto no YAML tem de dizer data, modelo e os três números medidos —
 em `cenarios/07` a `13` neste momento) é intencionalmente incompleto: omitir
 é honesto, fabricar número não é.
 
+## Cenário que nasce verde precisa de prova de sensibilidade
+
+Nem todo cenário nasce vermelho. Guarda de regressão (bug já fechado, cenário
+existe para ele não voltar) nasce verde, e isso é legítimo. O que NÃO é
+legítimo é chamá-la de guarda sem nunca a ter visto falhar: **cenário que
+nunca falhou não provou que consegue falhar**. Uma verificação negativa —
+`agendamentos: 0`, `sem_agendamento_novo: true` — fica verde por várias causas
+diferentes, e só uma delas é a que o cenário afirma medir; as outras são
+recusa por outro motivo, ou o modelo nem tentando.
+
+Então, antes de um cenário verde contar como guarda: **quebre de propósito a
+condição que ele guarda, rode, e veja o vermelho**. Depois restaure e
+registre o resultado. Ex.: em `grade-do-profissional`, remover a exceção de
+bloqueio tem de fazer o agendamento acontecer e o cenário reprovar. Se ficar
+verde dos dois jeitos, a asserção é decoração — e aí o achado é maior que o
+cenário. Regra da guia, 02/09, depois de dois bloqueadores custarem caro por
+previsão tratada como medição.
+
 ## O modelo sob avaliação é declarado, não ambiente
 
 Achado de 02/09: até essa data, `tenant.py` não gravava `openrouter_model` no
