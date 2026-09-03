@@ -33,5 +33,5 @@ verificacoes:
     telefone: contato
   # Tetos de custo ainda NÃO medidos — pendente 3 passadas sob o modelo
   # declarado, e pendente a guarda em torno de `completion.choices[0]`
-  # (achado de 02/09, `openrouter.js:110`) entrar antes de gastar token
+  # (achado de 02/09, `openrouter.js`, `handleUserMessage`) entrar antes de gastar token
   # calibrando contra um bug de infra.
