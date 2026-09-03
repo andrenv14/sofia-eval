@@ -54,6 +54,13 @@ PROFISSIONAL = {
     "nome": (str, True),
     "service_duration_minutes": (int, False),
     "sort_order": (int, False),
+    # Profissional inativo continua na tabela e NÃO é oferecido:
+    # `carregarProfissionaisAtivos` (sofia-bot, `professionals/professionals.js`)
+    # filtra por
+    # `active`. Existe para o cenário poder reproduzir a configuração real de
+    # um tenant — "4 cadastrados, 3 agendáveis" é diferente de "4 agendáveis",
+    # e escrever 4 agendáveis mede outro negócio.
+    "ativo": (bool, False),
     # Grade de disponibilidade do profissional — regra recorrente semanal e
     # exceções pontuais (migration_2026-08-15_disponibilidade_profissionais).
     # CUIDADO, é armadilha: `temGradeConfigurada` (availability.js) liga a

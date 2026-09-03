@@ -1,0 +1,89 @@
+id: agenda-unica-um-por-vez
+descricao: >
+  Cenário de configuração do tenant de clínica que está na fila de lançamento
+  (item 4f) — dados fictícios, anonimizado por decisão do fundador. É
+  PRÉ-REQUISITO do lançamento: roda antes, não depois, e não espera a leva 2
+  terminar.
+
+  O que ele prova: com AGENDA ÚNICA, dois profissionais diferentes não podem
+  ser marcados no MESMO horário. A clínica atende um por vez, e o cliente que
+  chega no horário do outro tem de ser recusado.
+
+  E o motivo de isto merecer cenário próprio é onde a proteção mora. O banco
+  NÃO garante: o índice é
+  `UNIQUE (tenant_id, COALESCE(professional_id,-1), inicio, fim) WHERE
+  status='ativo'`, ou seja, POR PROFISSIONAL — dois profissionais no mesmo
+  horário passam por ele sem esbarrar em nada. Quem recusa é o Google:
+  `getBusyIntervals` (`googleCalendar.js`) lista o dia inteiro do calendário
+  resolvido e **não filtra por profissional**, e o calendário resolvido é o
+  mesmo para todos — `tenant.py` grava o mesmo `google_calendar_id` em cada
+  profissional, então `resolveCalendarId` devolve o mesmo id qualquer que seja
+  ele. Com todos compartilhando a agenda, o evento do primeiro bloqueia o
+  segundo.
+
+  Consequência que o cenário nasce sabendo, e que é a razão de ele existir:
+  **esta proteção está no Google, não no sistema.** Com a agenda desconectada
+  — que é o caso quando ela não está ligada — não existe barreira nenhuma, e duas
+  pessoas seriam marcadas no mesmo horário. Se este cenário PASSAR, ele
+  confirma a barreira funcionando; se REPROVAR com o agendamento acontecendo,
+  o achado é de produto e vale mais que o cenário: significa que "um por vez"
+  não está garantido por nada verificável.
+
+  Configuração fiel ao tenant real: quatro profissionais CADASTRADOS, três
+  ATIVOS e um inativo. A fila diz "4 profissionais" e isso induz ao erro —
+  o bot não oferece inativo (`carregarProfissionaisAtivos` filtra por
+  `active`), então quem agenda são três. Medição da guia, 03/09.
+
+tenant:
+  service_duration_minutes: 60
+  slot_interval_minutes: 30
+  horario_manha_inicio: "08:00"
+  horario_manha_fim: "12:00"
+  horario_tarde_inicio: "13:00"
+  horario_tarde_fim: "18:00"
+  profissionais:
+    - nome: Beatriz
+      service_duration_minutes: 60
+    - nome: Carlos
+      service_duration_minutes: 60
+    - nome: Denise
+      service_duration_minutes: 60
+    # Cadastrado e INATIVO, reproduzindo o quarto profissional do tenant
+    # real. ATENÇÃO: o cenário NÃO verifica que ele deixa de ser oferecido —
+    # isso é texto da conversa, e o vocabulário só julga efeito no banco. Ele
+    # está aqui para a configuração ser fiel (4 cadastrados, 3 agendáveis),
+    # não como asserção. Se alguém quiser aferir isso, precisa de chave nova.
+    - nome: Eduardo
+      service_duration_minutes: 60
+      ativo: false
+
+agenda_ocupada:
+  # A Beatriz já tem uma pessoa às 9h. Agenda única: este evento ocupa o
+  # horário do NEGÓCIO, não só o dela.
+  - data: "+2"
+    horario: "09:00"
+    duracao_minutos: 60
+    titulo: "Atendimento - Fernanda Lopes"
+    telefone: "5511999990008"
+    profissional: Beatriz
+
+turnos:
+  # Pede o MESMO horário, com OUTRO profissional — é exatamente a brecha que
+  # o índice do banco deixa passar, e que só a agenda compartilhada fecha.
+  - "quero marcar com o carlos depois de amanhã às 9h"
+  - "pode confirmar às 9h com o carlos mesmo, meu nome é Helena Braga"
+
+verificacoes:
+  # NASCE VERDE, e verde aqui é evidência fraca pelo mesmo motivo do
+  # `grade-do-profissional`: "nenhum agendamento novo" acontece tanto se a
+  # agenda única recusou (o que se quer provar) quanto se o modelo nem tentou.
+  # CONTROLE DE SENSIBILIDADE OBRIGATÓRIO antes de este cenário contar como
+  # guarda, junto da calibração: remover o item de `agenda_ocupada` e rodar —
+  # sem o evento das 9h a marcação com o Carlos DEVE acontecer,
+  # `sem_agendamento_novo` fica falso e o cenário **tem de ficar VERMELHO**.
+  # Se ficar verde sem o bloqueio, ele não mede nada e não entra na leva.
+  agendamentos: 1              # só o da Fernanda com a Beatriz continua
+  sem_agendamento_novo: true
+  # Tetos de custo ainda NÃO medidos — pendente 3 passadas sob o modelo
+  # declarado, e pendente a guarda em torno de `completion.choices[0]`
+  # (`openrouter.js`, `handleUserMessage`).

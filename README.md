@@ -299,8 +299,14 @@ Aceita as colunas de configuração de agendamento (`timezone`,
 `profissionais` (`nome`, `service_duration_minutes`, `sort_order`). O resto é
 preenchido com os mesmos padrões de `tests/helpers/fixtures.js` do `sofia-bot`.
 
-Cada profissional aceita ainda `grade` (regra recorrente semanal) e `excecoes`
-(pontuais), que semeiam `professional_availability` e
+Cada profissional aceita ainda `ativo` (booleano, padrão `true`), `grade`
+(regra recorrente semanal) e `excecoes` (pontuais). `ativo: false` cria o
+profissional cadastrado mas **fora da oferta** — `carregarProfissionaisAtivos`
+(`sofia-bot`, `professionals/professionals.js`) filtra por `active`, e a
+diferença importa: um tenant com "4 cadastrados, 3 agendáveis" não é o mesmo
+negócio que um com 4 agendáveis, e escrever 4 mede outra coisa.
+
+`grade` e `excecoes` semeiam `professional_availability` e
 `professional_availability_exceptions`:
 
 ```yaml
@@ -383,7 +389,7 @@ tráfego real. Nada inventado.
 
 ### Leva 2 — vocabulário fechado, tetos de custo AINDA NÃO medidos
 
-Os oito cenários abaixo passam na validação de esquema (`--lista`) e usam só
+Os nove cenários abaixo passam na validação de esquema (`--lista`) e usam só
 chaves já existentes ou as duas novas desta leva (`respostas_assistente_max`,
 `agendamento_status`). Nenhum deles fixou `chamadas_ia_max`/`tokens_prompt_max`
 ainda — falta a passada de 3 execuções que a seção "De onde vêm os tetos de
@@ -398,9 +404,10 @@ bug de infra gastaria token medindo o número errado.
 | `horario-de-outra-pessoa` | não marca em cima de um agendamento real de outra pessoa (variante de `horario-ocupado` com dono) |
 | `bot-a-bot-desengajar` | detectado robô de menu de outra empresa, responde uma vez e para — achado de tráfego real de 31/08, nasce vermelho até o prompt do `sofia-bot` mudar |
 | `duplicidade` | pedir o mesmo horário duas vezes não vira duas linhas, robusto ao caminho que o modelo escolher |
-| `configuracao-multiprofissional` | 4 profissionais, agenda única — nome resolve pra duração certa, dois profissionais não colidem no mesmo horário (dados fictícios, anonimizado) |
+| `configuracao-multiprofissional` | com 4 profissionais no ar, o nome resolve pro profissional certo e pra duração DELE (dados fictícios, anonimizado) |
 | `precisa-verificar-novamente` | modelo não inventa confirmação em cima do "tenta de novo" ambíguo de `createEvent` — intermitente por natureza, ver descrição do YAML |
 | `grade-do-profissional` | a grade do profissional vale, e exceção pontual vence a regra recorrente — guarda de regressão, nasce VERDE de propósito |
+| `agenda-unica-um-por-vez` | com agenda única, dois profissionais não podem ocupar o mesmo horário — e a proteção mora no Google, não no sistema. Pré-requisito de lançamento (dados fictícios, anonimizado) |
 
 **Sobre o item `grade ignorada sem profissional` da fila:** virou
 `grade-do-profissional`, e mudou de natureza no caminho. O bug original

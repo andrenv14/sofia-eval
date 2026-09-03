@@ -77,13 +77,16 @@ def criar(conn, cenario, cfg) -> dict:
             """
             INSERT INTO professionals (tenant_id, name, google_calendar_id, active, sort_order,
                                        service_duration_minutes)
-            VALUES (%s, %s, %s, true, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
                 linha["id"],
                 prof["nome"],
                 cfg.google_calendar_id,
+                # Padrão ativo; `ativo: false` reproduz profissional cadastrado
+                # que o bot não oferece.
+                prof.get("ativo", True),
                 prof.get("sort_order", i),
                 # NULL = herda a duração do tenant, igual à fixture do sofia-bot.
                 prof.get("service_duration_minutes"),
