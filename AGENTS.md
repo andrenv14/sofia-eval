@@ -124,6 +124,11 @@ verde dos dois jeitos, a asserção é decoração — e aí o achado é maior q
 cenário. Regra da guia, 03/09 (os rótulos de dia deste projeto seguem UTC),
 depois de dois bloqueadores custarem caro por previsão tratada como medição.
 
+Existe ferramenta para isso do lado do eval: `python -m sofia_eval.autoteste`
+exerce cada chave do vocabulário nos dois sentidos contra o banco, sem gastar
+token. **Rode-a depois de mexer em `verificacoes.py`** — é o lugar onde um bug
+não aparece como erro, aparece como veredito errado.
+
 **A regra não é sobre cenários — é sobre qualquer verificação, inclusive as
 suas próprias.** Um `grep` de auditoria, um filtro, uma varredura: se você só
 o viu dizer "limpo", ele não provou que consegue dizer "sujo". Caso concreto,
