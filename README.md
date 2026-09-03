@@ -134,6 +134,27 @@ cd ~/sofia-eval && ./sofia-eval
 Cada turno é uma chamada real de LLM, então a execução inteira leva alguns
 minutos e custa tokens de verdade.
 
+### Quem verifica o verificador
+
+O eval julga o modelo; `sofia_eval.autoteste` julga o EVAL — a camada que
+decide PASSOU/FALHOU, que é onde um bug não vira erro, vira **veredito errado
+em silêncio**.
+
+```bash
+.venv/bin/python -m sofia_eval.autoteste
+```
+
+Semeia estado conhecido no `sofia_test` e exerce cada chave do vocabulário nos
+DOIS sentidos: tem de passar quando deve **e reprovar quando deve**. Sem
+chamada de LLM, sem webhook, sem evento no Calendar — segundos. Respeita a
+mesma trava de recurso das passadas, porque usa o mesmo banco.
+
+Ele próprio foi verificado por mutação: quebrando de propósito o `<=` do teto
+de respostas e a comparação de status do `agendamento_status`, o autoteste
+passou de 10/10 para 8/10 e devolveu 1, acusando exatamente os dois casos
+mutados. Teste que só foi visto passar não provou que consegue reprovar — a
+mesma regra que o `AGENTS.md` impõe aos cenários.
+
 ### Códigos de saída
 
 | Código | Significado |
