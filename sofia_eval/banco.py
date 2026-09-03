@@ -52,6 +52,31 @@ def agendamento_por(conn, tenant_id: int, telefone: str, inicio) -> list:
     ).fetchall()
 
 
+def turnos_degradados(conn, tenant_id: int) -> int:
+    """Quantos turnos a API atendeu com um corpo SEM choice utilizável.
+
+    Assinatura, medida em 03/09: `chamadas_ia > 0` com `prompt_tokens = 0`.
+    O corpo de erro do OpenRouter (ex.: `error.code=429`) chega com `usage`
+    ZERADO, então `openrouter.js` conta a chamada e não soma token nenhum —
+    uma linha por turno em `ai_usage`.
+
+    Por LINHA, nunca pela soma: um cenário com turnos bons e degradados
+    misturados teria `SUM(prompt_tokens) > 0` e escaparia do agregado.
+
+    Existe porque a guarda do `choices[0]`, correta em produção (degradar é
+    melhor que morrer), criou um modo de falha novo AQUI: o turno degradado
+    satisfaz `agendamentos: 0` e `sem_agendamento_novo: true` sem o modelo ter
+    dito uma palavra, e o cenário PASSAVA. Verde observando nada."""
+    linha = conn.execute(
+        """
+        SELECT count(*) AS n FROM ai_usage
+         WHERE tenant_id = %s AND chamadas_ia > 0 AND prompt_tokens = 0
+        """,
+        (tenant_id,),
+    ).fetchone()
+    return int(linha["n"])
+
+
 def custo(conn, tenant_id: int) -> dict:
     linha = conn.execute(
         """

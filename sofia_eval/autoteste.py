@@ -59,6 +59,41 @@ def _semear(conn, tenant, tz):
     return inicio_contato
 
 
+def _checar_degradados(conn, tenant) -> list:
+    """`banco.turnos_degradados` nos dois sentidos.
+
+    O caso real que originou isto: rate limit (429) devolve corpo com `usage`
+    zerado, `openrouter.js` conta a chamada e não soma token. Sem esta
+    detecção o cenário PASSAVA — verde observando nada."""
+    casos = []
+    tid = tenant["id"]
+
+    conn.execute("DELETE FROM ai_usage WHERE tenant_id = %s", (tid,))
+    casos.append((banco.turnos_degradados(conn, tid) == 0,
+                  "turnos_degradados: sem uso registrado, não acusa", ""))
+
+    conn.execute(
+        "INSERT INTO ai_usage (tenant_id, contact_phone, model, prompt_tokens, "
+        "completion_tokens, total_tokens, chamadas_ia) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+        (tid, CONTATO, "teste/modelo", 4000, 120, 4120, 3),
+    )
+    casos.append((banco.turnos_degradados(conn, tid) == 0,
+                  "turnos_degradados: turno saudável não é acusado", ""))
+
+    conn.execute(
+        "INSERT INTO ai_usage (tenant_id, contact_phone, model, prompt_tokens, "
+        "completion_tokens, total_tokens, chamadas_ia) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+        (tid, CONTATO, "teste/modelo", 0, 0, 0, 1),
+    )
+    n = banco.turnos_degradados(conn, tid)
+    casos.append((n == 1,
+                  "turnos_degradados: acusa o degradado MISTURADO com o saudável",
+                  "" if n == 1 else f"esperava 1, obtive {n}"))
+
+    conn.execute("DELETE FROM ai_usage WHERE tenant_id = %s", (tid,))
+    return casos
+
+
 # (descrição, verificacoes, espera_reprovar)
 CASOS = (
     ("agendamentos: conta só os ativos", {"agendamentos": 1}, False),
@@ -132,6 +167,8 @@ def main() -> int:
             )
             resultados.append((bool(falhas), "agendamento_status: recusa por ambiguidade (2 linhas)",
                                falhas[0] if falhas else ""))
+
+            resultados.extend(_checar_degradados(conn, tenant))
         finally:
             mod_tenant.limpar(conn)
 
