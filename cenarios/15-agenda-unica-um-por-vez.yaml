@@ -37,9 +37,11 @@ descricao: >
   outro sistema, que este cenário não toca.
 
   E essa outra pergunta não se responde olhando se o campo está preenchido:
-  `google_refresh_token` pode conter um marcador curto que parece valor e não
-  é token nenhum. Verificação de "está conectado?" por campo não-vazio **passa
-  e mente**. A única checagem honesta é uma chamada real ao Google com aquela
+  `google_refresh_token` pode conter um marcador que parece valor e não é
+  token nenhum. Verificação de "está conectado?" por campo não-vazio **passa e
+  mente**. Testar FORMA já é melhor que testar tamanho — refresh token do
+  Google começa com `1//` —, mas continua sendo palpite sobre um formato de
+  terceiro. A única checagem honesta é uma chamada real ao Google com aquela
   credencial. Portanto: verde aqui é PRÉ-CONDIÇÃO do portão de lançamento, não
   o portão. O portão é a chamada real contra o tenant que vai ao ar.
 
