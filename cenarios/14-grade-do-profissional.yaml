@@ -11,8 +11,23 @@ descricao: >
   tenant SEM profissional nenhum — onde ignorar a grade é o certo, não o bug.
   Isso é leitura de código, não veredito: a fila mantém o item aberto até a
   investigação original ser reaberta. Enquanto isso, aqui fica a guarda de
-  regressão, que nasce VERDE de propósito — se um dia a grade voltar a ser
-  ignorada, este cenário fica vermelho.
+  regressão, que nasce VERDE de propósito.
+
+  ATENÇÃO — ESTE CENÁRIO AINDA NÃO ESTÁ VALIDADO COMO GUARDA. Dizer que "se a
+  grade voltar a ser ignorada ele fica vermelho" é PREVISÃO, não medição:
+  ninguém o viu vermelho ainda. Cenário que nunca falhou não prova que
+  consegue falhar — `agendamentos: 0` fica verde igual se a grade for
+  respeitada, se a ferramenta recusar por outro motivo, ou se o modelo não
+  tentar nada.
+  **Controle de sensibilidade, obrigatório antes de este cenário contar como
+  guarda** (exigência da guia, 02/09; amarrado à rodada de calibração porque
+  passada antes da guarda de `completion.choices[0]` morre em TypeError e não
+  mede nada): remover a exceção `bloqueio` abaixo — ou deslocá-la para outra
+  hora — e rodar. Sem o bloqueio das 9h a marcação DEVE acontecer,
+  `agendamentos` vira 1 e o cenário **tem de ficar VERMELHO**. Se ficar verde,
+  a asserção não mede o que afirma medir, e aí o achado é grande. Restaurar o
+  YAML depois, e registrar o resultado no relato da calibração. Se não passar
+  no controle, este cenário NÃO entra na leva.
 
   Determinismo, que é o que torna este cenário possível: a regra recorrente
   cobre os SETE dias da semana, então não importa em que dia a rodada
