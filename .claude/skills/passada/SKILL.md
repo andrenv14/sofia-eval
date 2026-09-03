@@ -79,7 +79,7 @@ segundo plano e espere a notificação, em vez de ficar consultando.
   override do passo 2 chegou.
 - Cenário que falhou deixa o estado do banco em
   `~/para-revisao/eval-<cenario>-*.json`. **Nada disso se commita** — carrega
-  conversa, e o repositório é público.
+  conversa de terceiro, que não entra em repositório em nenhuma visibilidade.
 - ERRO com o servidor de pé: leia o log dele antes de culpar o modelo. Em
   02/09, três ERROs eram um `TypeError` em `openrouter.js` (`handleUserMessage`),
   não comportamento.

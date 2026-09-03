@@ -3,7 +3,7 @@ descricao: >
   Pré-requisito de lançamento de um tenant real com 4 profissionais e agenda
   única — dados fictícios de propósito (decisão do fundador, 29/08: entra
   sem os dados reais do cliente que este cenário protege; nome do cliente
-  não pertence a repositório público, nem como identificador de cenário).
+  não pertence a repositório versionado, nem como identificador de cenário).
 
   Prova UMA coisa, e de propósito: o nome resolve para o profissional CERTO,
   com a duração DELE — não a do tenant nem a de outro profissional.

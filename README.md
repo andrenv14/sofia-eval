@@ -160,17 +160,19 @@ as consultas listam coluna a coluna, nunca `SELECT *`, então
 `whatsapp_access_token`, `google_client_secret` e `google_refresh_token`) ficam
 de fora.
 
-> **Não commite esses JSON.** Eles contêm o conteúdo das conversas do cenário, e
-> este repositório é público. Por isso o destino é `~/para-revisao/`, fora do
-> repositório — a mesma pasta dos achados que não moram aqui.
+> **Não commite esses JSON.** Eles contêm o conteúdo das conversas do cenário
+> — conversa de terceiro não entra em repositório, seja ele público ou
+> privado (a visibilidade deste já mudou uma vez, em 03/09/2026). Por isso o
+> destino é `~/para-revisao/`, fora do repositório — a mesma pasta dos achados
+> que não moram aqui.
 
 ## Relatório HTML
 
 Toda execução escreve, além da tabela, um arquivo HTML estático e
 auto-contido em `~/para-revisao/relatorio-eval-<timestamp>.html` — mesma
 pasta e mesmo motivo do JSON de evidência acima: o relatório carrega o
-conteúdo das conversas, e este repositório é público. **Não commite esse
-arquivo.**
+conteúdo das conversas, que não entra em repositório em nenhuma
+visibilidade. **Não commite esse arquivo.**
 
 Isto é o degrau 1 do item 8 de `docs/contexto/fila.md` no `sofia-bot`
 ("saída visual do eval"): a tabela do terminal só mostra o veredito, e o eval

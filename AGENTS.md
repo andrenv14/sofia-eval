@@ -7,17 +7,27 @@ NÃO pode fazer, e os modos de falha que já aconteceram.
 
 ## O que é, em uma frase
 
-Ferramenta **pública** que avalia o **comportamento** do modelo de IA do
-`sofia-bot` (repositório privado, irmão deste), não o código dele. Se você
+Ferramenta que avalia o **comportamento** do modelo de IA do `sofia-bot`
+(repositório irmão, privado), não o código dele. Se você
 está pensando em consertar um bug de comportamento sem escrever antes o
 cenário que o prova (e o vê nascer vermelho), pare — é o protocolo central
 deste projeto, não um detalhe de estilo.
 
 ## Antes de qualquer coisa
 
-- **Repositório é PÚBLICO.** Nunca telefone real, nome de cliente, IP de
-  servidor, nome de tenant real ou credencial em commit, comentário, YAML ou
-  mensagem de commit. Telefone sintético segue o padrão já usado em
+- **A visibilidade deste repositório MUDA — não escreva regra que dependa
+  dela.** Foi público de 25/08 a 03/09/2026 e é privado desde então, na mesma
+  noite em que várias decisões daqui foram tomadas supondo "público". Não
+  confie nem no que esta linha diz: confira se importar
+  (`gh repo view --json visibility`, ou a API do GitHub sem autenticação —
+  404 é privado, 200 é público).
+
+  **A regra vale nos dois estados: nunca telefone real, nome de cliente, IP
+  de servidor, nome de tenant real ou credencial em commit, comentário, YAML
+  ou mensagem de commit.** Vale privado porque repo privado é clonado para
+  laptop, compartilhado com quem entra no projeto, e — como 03/09 provou nas
+  duas direções — está a UM clique de mudar de estado. Dado de terceiro não
+  entra aqui em nenhum dos dois casos. Telefone sintético segue o padrão já usado em
   `cenarios/` (`5511999990NNN`) — nunca um número de verdade, nem "só de
   exemplo".
 
@@ -32,12 +42,17 @@ deste projeto, não um detalhe de estilo.
   que buscava. **Nenhuma das três tinha padrão.** Grep não pegaria nenhuma;
   a pergunta pegaria as três.
 
-  E o motivo de ser ANTES: em repositório público, `commit` + `push` **é
-  publicação, e é irreversível na prática**. Remover num commit posterior não
-  despublica (o conteúdo segue legível em `git log -p` e na página do commit),
-  e reescrever histórico não remove de forma confiável no GitHub — commit
-  órfão continua acessível por SHA, sobrevive em fork e em cache. A assimetria
-  é enorme: cuidar antes custa segundos, cuidar depois não resolve.
+  A justificativa original desta pergunta era outra, e ela **enfraqueceu no
+  mesmo dia** — fica registrada porque como ela caiu importa mais que ela.
+  Era: "em repositório público, commit + push é publicação irreversível, então
+  cuidar antes custa segundos e cuidar depois não resolve". Verdadeiro, e forte
+  — enquanto o repositório era público. Ficou privado horas depois, e o
+  argumento perdeu o essencial.
+
+  O que sobra não depende de visibilidade nenhuma, e é o que sustenta a
+  pergunta sozinho: **as três não tinham padrão**. Grep não pega o que não tem
+  padrão; pergunta pega. E o custo continua assimétrico mesmo privado, só que
+  menos: remover de commit já feito não apaga do histórico, aqui nem lá.
 - **Banco: só `sofia_test`, nunca produção.** A guarda em
   `sofia_eval/config.py` (`_conferir_banco`) recusa qualquer `DATABASE_URL`
   cujo nome de banco não seja exatamente `sofia_test`. Ela existe porque o
