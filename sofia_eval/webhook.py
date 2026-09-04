@@ -30,6 +30,14 @@ def montar_payload(phone_number_id: str, de: str, texto: str, wamid: str) -> dic
             {
                 "changes": [
                     {
+                        # `field` é obrigatório desde a fatia coex-webhooks do
+                        # sofia-bot: `processarWebhook`, em `src/server.js` do
+                        # sofia-bot, só processa change do campo `messages` e descarta as outras com log, sem
+                        # responder. Sem esta chave o webhook devolve 200 e não
+                        # processa nada — o eval esperaria uma resposta que
+                        # nunca vem, e cenário que assere ausência ficaria VERDE
+                        # com o bot nunca tendo rodado.
+                        "field": "messages",
                         "value": {
                             "metadata": {"phone_number_id": phone_number_id},
                             "messages": [
