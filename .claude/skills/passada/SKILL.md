@@ -176,11 +176,20 @@ vermelho. Verde dos dois jeitos = a asserção não mede o que afirma medir. Ver
 > Declarar "sem teto, 429 em 03/09" carimbaria uma medição feita sob um código
 > que está prestes a mudar.
 >
-> **Condição de retomada:** a fatia de RETENTATIVA de erro transitório entrar
-> em produção no `sofia-bot` (autorizada em 03/09; decisão da guia). O eval
-> roda contra o servidor real, então turno que degrada hoje é candidato a
-> completar depois dela — e teto medido sob o código que VAI para produção
-> vale mais que teto medido sob o que está saindo.
+> **Condição de retomada: CUMPRIDA em 05/09.** A fatia de retentativa de erro
+> transitório está em `origin/main` do `sofia-bot` (`src/ai/openrouter.js`,
+> "Retentativa de chamada com erro TRANSITÓRIO", com backoff fixo e
+> `MAX_TOOL_ITERATIONS` indo a 9). Era o que a leva esperava: o eval roda
+> contra o servidor real, e turno que degradava em 03/09 é candidato a
+> completar agora.
+>
+> **O que trava hoje é outra coisa: a janela.** O `sofia_test` está com a
+> sessão do `~/sofia-bot`, e a leva 2 só anda quando ela liberar — ou num
+> ambiente isolado, se o fundador autorizar montar um.
+>
+> Conferido de passagem em 05/09, porque era o risco que o contorno da
+> sentinela declarou: o texto de `openrouter.js` **não mudou**, então
+> `banco.TEXTO_DEGRADADO` continua casando. A sentinela não cegou.
 >
 > **Ao retomar, comece no passo 3** (o passo 2 está concluído). Os passos 1 e 2
 > não precisam ser refeitos; o passo 1 é barato e vale rodar mesmo assim.
@@ -295,22 +304,40 @@ rodar o controle positivo neste próprio comando — que é a regra do
 `AGENTS.md` aplicada à ferramenta antes de ela entrar aqui. Controle: os 6
 cenários da v1 têm de ficar FORA da lista.
 
-Dimensionamento **em dólares**, que é a moeda da decisão — token não é
-dólar, e o US$5 da chave é teto, não saldo. Medido em 03/09 pela API do
-OpenRouter: a chave tem limite de US$5, **já consumiu US$2,20** (desde 25/08,
-quase tudo sob gemini) e **restam US$2,80**. O preço do
-`openai/gpt-5.6-luna` é US$0,20 por milhão de tokens de prompt e US$1,20 por
-milhão de completion. Base medida da v1 sob gemini: 17 turnos custaram 50
-chamadas e 199.338 tokens de prompt por passada (~2,9 chamadas e ~11,7 mil
-tokens por turno). Os 9 cenários da leva 2 somam 31 turnos → ~90 chamadas e
-~363 mil tokens de prompt por passada, ~1,09 milhão nas três →
-**US$ 0,25 na rodada inteira**, contra US$2,80 disponíveis. Cabe com ~11× de
-folga; a projeção de tokens é piso (três cenários têm 5-6 turnos), mas
-precisaria errar por uma ordem de grandeza para apertar.
+**O modelo declarado da leva 2 é `google/gemini-3.7-flash`** — o fundador
+voltou para ele em 05/09, depois de uma temporada sob `openai/gpt-5.6-luna`.
+Quem subir o servidor declara ESTE:
 
-Colateral que vale saber: o luna custa **3,75× menos por token de prompt** que
-o gemini, e nos três cenários medidos em 02/09 também gastou MENOS tokens. A
-troca de modelo barateou a operação nas duas pontas.
+```bash
+cd ~/sofia-bot && OPENROUTER_MODEL=google/gemini-3.7-flash npm start
+```
+
+Dimensionamento **em dólares**, que é a moeda da decisão — token não é dólar, e
+o teto da chave é teto, não saldo. Medido em 05/09 pela API do OpenRouter: a
+chave tem limite de **US$10** (era US$5 até 05/09), **já consumiu US$2,2432**
+desde 25/08 e **restam US$7,7568**. Preço do `google/gemini-3.7-flash`:
+**US$0,75 por milhão de tokens de prompt e US$3,75 por milhão de completion.**
+
+Base medida da v1 sob gemini — que é o modelo de novo, então a base vale
+direto: 17 turnos custaram 50 chamadas e 199.338 tokens de prompt por passada
+(~2,9 chamadas e ~11,7 mil tokens por turno). Os 9 cenários da leva 2 somam 31
+turnos → ~90 chamadas e ~363 mil tokens de prompt por passada, ~1,09 milhão nas
+três. A completion fica em torno de 2% do prompt nas passadas medidas. Então:
+
+    1,09 M × US$0,75/M  = US$ 0,82  (prompt)
+    ~22 mil × US$3,75/M = US$ 0,08  (completion)
+                          --------
+                          US$ 0,90  na rodada inteira
+
+contra US$7,7568 disponíveis: **~8,6× de folga**. A projeção de tokens é piso
+(três cenários têm 5-6 turnos), mas precisaria errar por quase uma ordem de
+grandeza para apertar.
+
+Histórico que explica os números antigos deste arquivo: sob luna a mesma rodada
+projetava US$0,25, porque o luna custa **3,75× menos por token** nas duas
+pontas e, nos três cenários medidos em 02/09, também gastou MENOS tokens. A
+volta para o gemini encarece a operação — o que o aumento do teto para US$10
+mais que compensa.
 
 Refaça esta medição antes de disparar (`GET /api/v1/auth/key` com a chave do
 `.env`, e `GET /api/v1/models` para o preço) — saldo é estado, não constante.
@@ -323,13 +350,19 @@ lançamento), depois `agenda-unica-um-por-vez`, `bot-a-bot-desengajar`,
 `duplicidade`, `precisa-verificar-novamente`. São nove — confira contra o
 `grep` acima antes de rodar, e não contra esta lista.
 
-**O que NÃO precisa entrar nesta rodada: remedir os 6 cenários da v1.** Os
-tetos deles foram calibrados sob gemini, e a troca para `openai/gpt-5.6-luna`
-poderia tê-los invalidado — mas a passada de 02/09 mediu os três que
-produziram resultado, e nos três o luna custou MENOS que a base gemini
-(`duracao-por-profissional` 10/38.907 contra 13/56.657;
-`data-relativa` 6/22.833 contra 8/30.716; `horario-ocupado` 4/15.134 contra
-7/27.277). Então os tetos da v1 estão **folgados sob o modelo novo, não
-apertados**: não vão reprovar cenário por calibração. Remedi-los aperta a
-guarda, o que é bom, mas não destrava nada e dobraria o custo da rodada.
-Vale como fatia própria, depois — não como pré-requisito da leva 2.
+**O que NÃO precisa entrar nesta rodada: remedir os 6 cenários da v1.** E
+desde 05/09 o argumento ficou mais simples do que era: os tetos da v1 foram
+calibrados **sob gemini**, e o gemini é de novo o modelo declarado. Eles estão
+no próprio modelo de origem — não há troca para invalidá-los.
+
+O parágrafo anterior deste arquivo argumentava outra coisa, e fica registrado
+porque a razão de ele ter caído importa: sob luna era preciso mostrar que os
+tetos da v1 não tinham ficado APERTADOS, e a passada de 02/09 mostrava isso nos
+três cenários que produziram resultado (`duracao-por-profissional` 10/38.907
+contra 13/56.657; `data-relativa` 6/22.833 contra 8/30.716; `horario-ocupado`
+4/15.134 contra 7/27.277 — o luna custou menos nos três). Com a volta ao
+gemini, esse raciocínio deixou de ser necessário; a medição continua válida
+como registro do que o luna custava, não como sustentação dos tetos.
+
+Remedir a v1 aperta a guarda, o que é bom, mas não destrava nada e aumentaria o
+custo da rodada. Vale como fatia própria, depois — não como pré-requisito.
