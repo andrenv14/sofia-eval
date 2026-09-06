@@ -90,14 +90,20 @@ turnos:
   - "pode confirmar às 9h com o carlos mesmo, meu nome é Helena Braga"
 
 verificacoes:
-  # NASCE VERDE, e verde aqui é evidência fraca pelo mesmo motivo do
-  # `grade-do-profissional`: "nenhum agendamento novo" acontece tanto se a
-  # agenda única recusou (o que se quer provar) quanto se o modelo nem tentou.
-  # CONTROLE DE SENSIBILIDADE OBRIGATÓRIO antes de este cenário contar como
-  # guarda, junto da calibração: remover o item de `agenda_ocupada` e rodar —
-  # sem o evento das 9h a marcação com o Carlos DEVE acontecer,
-  # `sem_agendamento_novo` fica falso e o cenário **tem de ficar VERMELHO**.
-  # Se ficar verde sem o bloqueio, ele não mede nada e não entra na leva.
+  # NASCE VERDE, e verde aqui seria evidência fraca — "nenhum agendamento
+  # novo" acontece tanto se a agenda única recusou (o que se quer provar)
+  # quanto se o modelo nem tentou. Por isso o controle de sensibilidade era
+  # obrigatório antes deste cenário contar como guarda.
+  #
+  # CONTROLE FEITO EM 05/09, e PASSOU — este cenário é guarda validada.
+  # Contra `sofia-bot` 45dc8e8 (main deployada), modelo google/gemini-3.7-flash:
+  #   - COM o evento das 9h:  PASSOU (7 chamadas, 29.446 tokens de prompt);
+  #   - SEM o evento (item de `agenda_ocupada` removido): FALHOU, e pelo motivo
+  #     certo — `sem_agendamento_novo` obtido 1, com a linha
+  #     `2026-09-07 09:00 (60min, Carlos)` no banco. A assistente chegou a
+  #     confirmar por escrito.
+  # Ou seja: a asserção mede o que afirma medir, e a agenda compartilhada é
+  # mesmo quem recusa. Refazer se o caminho de `getBusyIntervals` mudar.
   agendamentos: 1              # só o da Fernanda com a Beatriz continua
   sem_agendamento_novo: true
   # Tetos de custo ainda NÃO medidos — pendente 3 passadas sob o modelo
