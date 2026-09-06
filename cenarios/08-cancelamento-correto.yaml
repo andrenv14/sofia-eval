@@ -41,5 +41,10 @@ verificacoes:
       data: "+2"
       horario: "14:00"
       status: ativo
-  # Tetos de custo ainda NÃO medidos — pendente 3 passadas sob o modelo
-  # declarado. Omitidos de propósito em vez de chutados.
+  # Tetos = 2 × o máximo medido em 3 passadas (2026-09-05,
+  # google/gemini-3.7-flash, contra sofia-bot 45dc8e8): chamadas 17/17/17, tokens de prompt
+  # 72.994/72.386/72.878. Máximos: 17 e 72.994.
+  # A folga de 100% existe porque a variação natural é de ±1 chamada e o
+  # teto tem de pegar CURVA (o incidente foi 61 chamadas / 530.575 tokens).
+  chamadas_ia_max: 34
+  tokens_prompt_max: 145988

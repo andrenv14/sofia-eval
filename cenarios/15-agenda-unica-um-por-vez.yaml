@@ -106,6 +106,12 @@ verificacoes:
   # mesmo quem recusa. Refazer se o caminho de `getBusyIntervals` mudar.
   agendamentos: 1              # só o da Fernanda com a Beatriz continua
   sem_agendamento_novo: true
-  # Tetos de custo ainda NÃO medidos — pendente 3 passadas sob o modelo
-  # declarado, e pendente a guarda em torno de `completion.choices[0]`
-  # (`openrouter.js`, `handleUserMessage`).
+  # Tetos = 2 × o máximo medido em 3 passadas (2026-09-05,
+  # google/gemini-3.7-flash, contra sofia-bot 45dc8e8): chamadas 7/7/7, tokens de prompt
+  # 29.446/29.740/29.588. Máximos: 7 e 29.740.
+  # A 1a das tres e a primeira execucao deste cenario na historia, feita
+  # junto do controle de sensibilidade; as outras duas sao das rodadas de 9.
+  # A folga de 100% existe porque a variação natural é de ±1 chamada e o
+  # teto tem de pegar CURVA (o incidente foi 61 chamadas / 530.575 tokens).
+  chamadas_ia_max: 14
+  tokens_prompt_max: 59480

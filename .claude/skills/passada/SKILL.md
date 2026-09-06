@@ -169,30 +169,22 @@ vermelho. Verde dos dois jeitos = a asserção não mede o que afirma medir. Ver
 
 ### A calibração pendente da leva 2 — ordem pronta para disparar
 
-> **ESTADO EM 03/09: PAUSADA — não é fracasso, e os 9 NÃO estão declarados sem
-> teto.** Motivo: o 429 deixou de ser intermitente e virou persistente no fim
-> da tarde — **6 passadas seguidas degradaram**, sem nenhuma conversa saudável
-> para medir (8 degradações no total: 4 na iteração 1, 3 na 2, 1 na 3).
-> Declarar "sem teto, 429 em 03/09" carimbaria uma medição feita sob um código
-> que está prestes a mudar.
+> **ESTADO EM 05/09: CALIBRAÇÃO CONCLUÍDA.** Os 8 cenários que precisavam de
+> teto têm teto medido, e os dois que nascem verdes foram validados como
+> guardas nos dois sentidos. Feito contra `sofia-bot` **45dc8e8** (a main
+> deployada em 05/09, com a fatia de retentativa e a coexistência dentro) sob
+> `google/gemini-3.7-flash`.
 >
-> **Condição de retomada: CUMPRIDA em 05/09.** A fatia de retentativa de erro
-> transitório está em `origin/main` do `sofia-bot` (`src/ai/openrouter.js`,
-> "Retentativa de chamada com erro TRANSITÓRIO", com backoff fixo e
-> `MAX_TOOL_ITERATIONS` indo a 9). Era o que a leva esperava: o eval roda
-> contra o servidor real, e turno que degradava em 03/09 é candidato a
-> completar agora.
+> Resultado das 3 passadas: **8 de 9 PASSOU, e o 9º reprova de propósito** —
+> o `bot-a-bot-desengajar` nasce vermelho até o prompt do `sofia-bot` ganhar a
+> regra de silenciar (decisão do fundador de 31/08, confirmada em 06/09).
+> Reprovou nas três, sempre com 4 respostas onde a regra pede 1.
 >
-> **O que trava hoje é outra coisa: a janela.** O `sofia_test` está com a
-> sessão do `~/sofia-bot`, e a leva 2 só anda quando ela liberar — ou num
-> ambiente isolado, se o fundador autorizar montar um.
+> **Zero degradações por 429 em todas as passadas.** A tempestade de 03/09, que
+> envenenou seis tentativas seguidas e produziu um verde falso, não voltou.
 >
-> Conferido de passagem em 05/09, porque era o risco que o contorno da
-> sentinela declarou: o texto de `openrouter.js` **não mudou**, então
-> `banco.TEXTO_DEGRADADO` continua casando. A sentinela não cegou.
->
-> **Ao retomar, comece no passo 3** (o passo 2 está concluído). Os passos 1 e 2
-> não precisam ser refeitos; o passo 1 é barato e vale rodar mesmo assim.
+> O que sobrou de trabalho aberto está em "O que NÃO entrou nesta rodada",
+> no fim desta seção.
 
 **Destravada em 03/09.** Estava bloqueada até a guarda de
 `completion.choices[0]` (`openrouter.js`, `handleUserMessage`) entrar em
@@ -286,8 +278,12 @@ cenário. Sem o bloqueio das 9h a marcação DEVE acontecer, `agendamentos` vira
 Se ficar verde, ele não entra na leva e o achado vale mais que a calibração.
 Restaure o YAML e registre o resultado no relato.
 
-**Passo 4 — 3 passadas dos 9 cenários sem teto**, com o modelo declarado na
-subida. Fonte da verdade sobre quem falta é o YAML, não uma lista escrita
+**Passo 4 — 3 passadas dos cenários sem teto**, com o modelo declarado na
+subida. **São 8, não 9** — o `grep` abaixo devolve nove arquivos, mas o
+`bot-a-bot-desengajar` declara no próprio YAML que é sem teto POR DESENHO ("o
+que importa aqui é PARAR de responder, não quanto custou até parar"). Contar
+nove leva a fabricar um teto que o cenário recusa; a lista do `grep` é o ponto
+de partida, e a leitura do YAML é o que decide. Fonte da verdade sobre quem falta é o YAML, não uma lista escrita
 aqui, que envelhece: cenário sem `chamadas_ia_max` é cenário sem teto.
 Passada que voltar com ERRO por turno degradado **não conta** — repete, e a
 repetição fica registrada (regra no começo desta seção).
