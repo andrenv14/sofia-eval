@@ -142,6 +142,49 @@ def _checar_degradados_por_texto(conn, tenant) -> list:
     return casos
 
 
+def _checar_tetos(conn, tenant, ids_antes) -> list:
+    """`chamadas_ia_max` e `tokens_prompt_max` nos DOIS sentidos.
+
+    Existe porque havia um buraco: até 05/09 o autoteste exercitava
+    `chamadas_ia_max` só no sentido que PASSA ("sem uso registrado, 0 <= 5") e
+    `tokens_prompt_max` em sentido nenhum. Teto que nunca foi visto reprovar
+    não provou que consegue reprovar — e nesse dia oito cenários da leva 2
+    ganharam teto medido de uma vez, o que fez do buraco um risco real: um teto
+    quebrado não apareceria como erro, apareceria como cenário passando por
+    engano.
+
+    O caso do LIMITE EXATO não é zelo: teto é "no máximo isto", então gastar
+    exatamente o teto tem de PASSAR. Se um dia virar `<` em vez de `<=`, todo
+    cenário calibrado reprova por calibração no seu próprio máximo medido."""
+    casos = []
+    tid = tenant["id"]
+
+    conn.execute("DELETE FROM ai_usage WHERE tenant_id = %s", (tid,))
+    conn.execute(
+        "INSERT INTO ai_usage (tenant_id, contact_phone, model, prompt_tokens, "
+        "completion_tokens, total_tokens, chamadas_ia) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+        (tid, CONTATO, "teste/modelo", 50000, 1200, 51200, 10),
+    )
+
+    for verifs, espera_reprovar, descricao in (
+        ({"chamadas_ia_max": 11},    False, "chamadas_ia_max: 10 <= 11, não acusa"),
+        ({"chamadas_ia_max": 10},    False, "chamadas_ia_max: LIMITE EXATO passa (10 <= 10)"),
+        ({"chamadas_ia_max": 9},     True,  "chamadas_ia_max: acusa o estouro (10 > 9)"),
+        ({"tokens_prompt_max": 50001}, False, "tokens_prompt_max: 50.000 <= 50.001, não acusa"),
+        ({"tokens_prompt_max": 50000}, False, "tokens_prompt_max: LIMITE EXATO passa"),
+        ({"tokens_prompt_max": 49999}, True,  "tokens_prompt_max: acusa o estouro"),
+    ):
+        falhas, _, _ = verificacoes.aplicar(conn, tenant, _cenario(verifs), ids_antes)
+        ok = bool(falhas) == espera_reprovar
+        motivo = "" if ok else (
+            f"esperava {'reprovar' if espera_reprovar else 'passar'}, "
+            f"obtive {falhas or 'nenhuma falha'}")
+        casos.append((ok, descricao, falhas[0] if (ok and falhas) else motivo))
+
+    conn.execute("DELETE FROM ai_usage WHERE tenant_id = %s", (tid,))
+    return casos
+
+
 # (descrição, verificacoes, espera_reprovar)
 CASOS = (
     ("agendamentos: conta só os ativos", {"agendamentos": 1}, False),
@@ -218,6 +261,7 @@ def main() -> int:
 
             resultados.extend(_checar_degradados(conn, tenant))
             resultados.extend(_checar_degradados_por_texto(conn, tenant))
+            resultados.extend(_checar_tetos(conn, tenant, ids_antes))
         finally:
             mod_tenant.limpar(conn)
 
