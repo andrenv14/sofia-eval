@@ -9,26 +9,29 @@ descricao: >
   4 mensagens em 50s nunca o dispara. É comportamento de MODELO, que a suíte
   (IA simulada) não alcança.
 
-  CORREÇÃO DE REGISTRO (06/09). Este cenário afirmava "decisão de produto do
-  fundador (31/08): SILENCIAR", e a data estava ERRADA — 31/08 registrou o
-  ACHADO e deixou duas alternativas em aberto ("responder uma vez e silenciar,
-  ou seguir engajando"). A guia da VPS procurou a decisão no `LOG.md`, em
-  `docs/log/`, `fila-concluido.md`, `docs/decisoes.md` e `docs/features/` do
-  `sofia-bot` e não achou nenhuma; do lado de lá a palavra registrada era
-  "pendente". Ou seja: por cinco dias este YAML codificou como decidida uma
-  regra que ninguém tinha aprovado — previsão vestida de medição, a mesma
-  família de erro que o `AGENTS.md` persegue, desta vez na descrição e não na
-  asserção.
+  Decisão de produto do fundador (31/08): SILENCIAR. Detectado menu
+  automático, a Sofia responde UMA vez (com o pitch) e para — não segue
+  tentando engajar. Este cenário mede a CONTAGEM de respostas, não o texto,
+  e nasce vermelho até o prompt mudar para a regra de silenciar (protocolo do
+  item 8 da fila: cenário antes do conserto, para provar a correção).
 
-  DECISÃO, tomada em 06/09 pelo fundador, com a guia da VPS junto: **responder
-  UMA vez e parar.** Detectado menu automático, a Sofia responde uma vez e não
-  segue tentando engajar.
+  CONFERIDO EM 06/09, e a data acima sobreviveu à conferência. Vale registrar
+  porque quase foi desfeita: os documentos de contexto do `sofia-bot`
+  (`LOG.md`, `fila.md`, `docs/decisoes.md`) carregaram "pendente — responder
+  uma vez e silenciar, ou seguir engajando" por cinco dias, e a guia da VPS,
+  ao procurar a decisão, não a achou em lugar nenhum de lá. Por algumas horas
+  pareceu que ESTE arquivo é que afirmava decisão inexistente.
 
-  Então `respostas_assistente_max: 1` passa a codificar uma regra de fato
-  aprovada, e o vermelho deste cenário é bug medido. Ele nasce vermelho de
-  propósito e assim continua até o prompt do `sofia-bot` ganhar a regra —
-  protocolo do item 8 da fila: cenário antes do conserto, para provar a
-  correção quando ela chegar. Mede a CONTAGEM de respostas, não o texto.
+  Quem desempatou foi o fundador: a decisão é de 31/08 mesmo, e o registro
+  desatualizado era o do outro repositório — decisão tomada numa janela e
+  nunca propagada ao contexto. A guia corrigiu do lado dela.
+
+  O que isso ensina para quem ler depois: ausência de registro num repositório
+  não é evidência de que a decisão não existiu, e duas asserções escritas pela
+  mesma sessão no mesmo dia (aqui: este YAML e a mensagem do commit `48dc2f8`)
+  não são duas fontes independentes. Nenhum dos dois lados podia resolver
+  sozinho — só a comparação entre repositórios expôs a divergência, e só o
+  fundador podia fechá-la.
 
 tenant:
   service_duration_minutes: 60
