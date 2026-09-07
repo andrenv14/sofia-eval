@@ -38,6 +38,11 @@ PADRAO = {
     "horario_tarde_fim": "18:00",
     "horario_noite_inicio": "18:00",
     "horario_noite_fim": "20:00",
+    # Mesmo default da coluna (`false`), de propósito: o cenário que não
+    # declara nada continua a medir o caminho comum, que é o de quase todo
+    # tenant. Ligar por engano não é neutro — o silêncio por echo do dono
+    # passa a existir e pode calar o contato no meio do cenário.
+    "coexistencia": False,
 }
 
 

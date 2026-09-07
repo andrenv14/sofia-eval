@@ -142,6 +142,41 @@ def _checar_degradados_por_texto(conn, tenant) -> list:
     return casos
 
 
+def _checar_coexistencia(conn, cfg) -> list:
+    """`tenant.coexistencia` nos dois sentidos, contra a COLUNA.
+
+    A chave é aditiva e parece trivial, e é exatamente por isso que precisa de
+    prova: se ela for silenciosamente descartada entre o YAML e o INSERT, o
+    tenant nasce com `coexistencia = false`, toda a cadeia de Coexistence fica
+    inerte, `contatos_estado` nunca ganha linha, e o cenário que afere
+    delegação dá FALSO VERMELHO — reportando "não delegou" contra um bot que
+    delegou certo. O sintoma é indistinguível de bug do modelo.
+
+    Cria e destrói tenants próprios, e por isso roda ANTES do tenant do resto
+    do autoteste: `mod_tenant.limpar` trunca tudo."""
+    casos = []
+
+    mod_tenant.limpar(conn)
+    modelo = mod_cenario.Cenario(id="autoteste-coex-default", caminho=RAIZ)
+    modelo.contato = CONTATO
+    tenant = mod_tenant.criar(conn, modelo, cfg)
+    casos.append((tenant["coexistencia"] is False,
+                  "coexistencia: omitida no YAML nasce false (default da coluna)",
+                  "" if tenant["coexistencia"] is False else f"obtive {tenant['coexistencia']!r}"))
+
+    mod_tenant.limpar(conn)
+    modelo = mod_cenario.Cenario(id="autoteste-coex-ligada", caminho=RAIZ,
+                                 tenant={"coexistencia": True})
+    modelo.contato = CONTATO
+    tenant = mod_tenant.criar(conn, modelo, cfg)
+    casos.append((tenant["coexistencia"] is True,
+                  "coexistencia: declarada true CHEGA à coluna (não é descartada)",
+                  "" if tenant["coexistencia"] is True else f"obtive {tenant['coexistencia']!r}"))
+
+    mod_tenant.limpar(conn)
+    return casos
+
+
 def _checar_tetos(conn, tenant, ids_antes) -> list:
     """`chamadas_ia_max` e `tokens_prompt_max` nos DOIS sentidos.
 
@@ -226,6 +261,8 @@ def main() -> int:
     resultados = []
 
     with banco.conectar(cfg.database_url) as conn:
+        resultados.extend(_checar_coexistencia(conn, cfg))
+
         mod_tenant.limpar(conn)
         modelo = mod_cenario.Cenario(id="autoteste", caminho=RAIZ, verificacoes={"agendamentos": 0})
         modelo.contato = CONTATO

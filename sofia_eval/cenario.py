@@ -47,6 +47,15 @@ TENANT = {
     "horario_tarde_fim": (str, False),
     "horario_noite_inicio": (str, False),
     "horario_noite_fim": (str, False),
+    # Liga `tenants.coexistencia`. NÃO é cosmético: sem ela toda a cadeia de
+    # Coexistence do `sofia-bot` fica inerte, e o cenário mede o portão em vez
+    # do comportamento. `chamarAtendenteHumano` (`src/support/humanHandoff.js`)
+    # só devolve `modo: 'coexistencia'` sob `if (tenant.coexistencia)`;
+    # `openrouter.js` só marca `efeitos.escalouParaHumano` nesse modo; e só
+    # então `server.js` chama `silenciarPorHandoff`. Ou seja: em tenant comum
+    # `contatos_estado` NUNCA ganha linha — não é escrita-e-ignorada, é nunca
+    # escrita. Cenário que afira delegação sem esta chave dá FALSO VERMELHO.
+    "coexistencia": (bool, False),
     "profissionais": (list, False),
 }
 
