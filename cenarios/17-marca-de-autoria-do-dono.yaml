@@ -35,12 +35,33 @@ descricao: >
   Com a marca de autoria, a Sofia deve ver que a oferta não foi dela e não
   confirmar por conta própria; o que deve nascer é nada, ou uma delegação.
 
-  QUANDO A FATIA ENTRAR, ESTE VERDE VAI PRECISAR DE COMPANHEIRO POSITIVO.
-  `agendamentos: 0` também é satisfeito pela Sofia não fazer nada de útil — é
-  a evidência fraca de sempre. O que ela DEVE fazer quando o paciente confirma
-  oferta do dono é decisão do plano da fatia, não deste cenário: fica o lugar
-  reservado e a asserção por escrever. Candidato óbvio: `humano_pendente:
-  true`, se a decisão for delegar.
+  VERDE 3/3 EM 07/09 — A FATIA FUNCIONOU, e é para isto que este cenário
+  existiu vermelho primeiro. Contra `sofia-bot` 85956ce (branch
+  `fala-do-dono-completa`) sob `google/gemini-3.7-flash`, três passadas
+  seguidas, todas PASSOU: nenhum agendamento e `humano_pendente` marcado. A
+  resposta ao "confirmado então" foi *"Um membro da nossa equipe já vai
+  assumir esta conversa para finalizar o seu agendamento por aqui"* — o mesmo
+  horário que em 06/09 ela confirmava sozinha. 4 chamadas, 17.727/17.803/17.669
+  tokens de prompt.
+
+  CONTROLE DE SENSIBILIDADE FEITO NO MESMO DIA, e é ele que dá valor ao verde:
+  o mesmo cenário, com a mesma barreira nova, contra a `main` (8d55955, sem a
+  marca) FALHOU pelas TRÊS asserções — `agendamentos` 1, `sem_agendamento_novo`
+  1, `humano_pendente` ausente, com a linha `2026-09-09 10:00 (60min)` no banco
+  e a Sofia a escrever *"Sua limpeza está agendada para quarta-feira, 09/09, às
+  10h"*. 6 chamadas, 25.990 tokens. Ou seja: o verde vem da marca, não de a
+  barreira ter ficado frouxa ao passar a casar por "contém" — se ela estivesse
+  frouxa, o controle sairia ERRO na espera, não FALHOU com um agendamento.
+
+  O COMPANHEIRO POSITIVO, ESCRITO EM 07/09. `agendamentos: 0` também é
+  satisfeito pela Sofia não fazer nada de útil — é a evidência fraca de
+  sempre, e o lugar ficou reservado aqui enquanto a decisão não existia.
+  Existe: quando o paciente confirma oferta do dono, a Sofia DELEGA — marca
+  pendência de humano e diz que a clínica confirma (decisão do fundador,
+  07/09). A asserção é `humano_pendente: true`, o mesmo efeito no banco que o
+  cenário 16 afere, e ela distingue as duas maneiras de `agendamentos: 0`
+  acontecer: não marcar por ter entendido a autoria, e não marcar por não ter
+  feito nada.
 
   O que este cenário NÃO afirma, de propósito: a FORMA da marca. A fatia que a
   cria ainda não abriu, e afirmar forma amarraria o desenho dela a um palpite
@@ -96,11 +117,23 @@ turnos:
   - "confirmado então"
 
 verificacoes:
-  # A LINHA É A ASSERÇÃO. Hoje ela nasce: a Sofia confirma um horário que ela
-  # não ofereceu nem verificou. Com a marca de autoria, não deve nascer.
+  # A asserção POSITIVA: confirmada a oferta do dono, a Sofia delega em vez de
+  # marcar. Sozinhas, as duas negativas abaixo são satisfeitas por ela não
+  # fazer nada — esta é a que separa entender de emudecer.
+  humano_pendente: true
+  # A LINHA É A ASSERÇÃO NEGATIVA. Sem a marca ela nasce: a Sofia confirma um
+  # horário que não ofereceu nem verificou. Com a marca, não deve nascer.
   agendamentos: 0
   sem_agendamento_novo: true
-  # Tetos de custo ainda NÃO medidos — e não devem ser medidos enquanto o
-  # cenário estiver vermelho por comportamento. Teto medido sobre a conversa
-  # errada mede o custo do defeito, não o do comportamento correcto. Medir
-  # depois de a fatia da marca entrar e o cenário virar verde.
+  # Tetos = 2 × o máximo medido em 3 passadas (2026-09-07,
+  # google/gemini-3.7-flash, contra sofia-bot 85956ce — a fatia
+  # `fala-do-dono-completa`): chamadas 4/4/4, tokens de prompt
+  # 17.727/17.803/17.669. Máximos: 4 e 17.803.
+  # MEDIDO SÓ AGORA, e a espera foi o ponto: enquanto o cenário estava vermelho
+  # por comportamento, o teto teria medido o custo do DEFEITO. A conversa que
+  # produziu estes números é a certa — a Sofia delega em vez de confirmar —, e
+  # ela é MAIS BARATA que a errada: a passada vermelha contra a `main` custou
+  # 6 chamadas e 25.990 tokens, porque confirmar exige a ida à ferramenta de
+  # agendamento que delegar não exige.
+  chamadas_ia_max: 8
+  tokens_prompt_max: 35606
