@@ -45,6 +45,33 @@ descricao: >
   consegue acusar contra o servidor real — não só no autoteste. Refazer se o
   caminho de `silenciarPorHandoff` ou o guard de `coexistencia` mudarem.
 
+  REFEITO EM 07/09, PORQUE O DE 06/09 NÃO SE SUSTENTAVA: o braço vermelho podia
+  ter vindo da COLUNA, não da regra. Naquela data o eval usava um
+  `phone_number_id` só para todos os cenários, e o `sofia-bot` cacheia o tenant
+  por esse campo durante 30s. A rodada do braço "sem a regra" (06/09 22:31:28)
+  saiu ~22s depois de uma rodada do `configuracao-multiprofissional`, que NÃO
+  declara `coexistencia`. Herdando aquela coluna como `false`, a marca nunca
+  seria escrita e este cenário daria vermelho COM regra ou SEM regra — que é
+  precisamente o falso vermelho descrito logo abaixo. Ver
+  `tenant.phone_number_id_do_cenario`.
+
+  Refeito com os ids por cenário, contra `sofia-bot` 79c0715 sob
+  `google/gemini-3.7-flash`. Base intacta: PASSOU, 2 chamadas / 9.423 tokens.
+  Braço "sem a regra", 7 tentativas: NENHUMA VERDE — 1 FALHOU (5 chamadas /
+  23.215 tokens; `humano_pendente` ausente e a Sofia a oferecer sexta-feira) e
+  6 ERRO por turno degradado. Os seis degradados são ESGOTAMENTO DE ITERAÇÃO,
+  não 429: zero ocorrências de `resposta sem choice utilizável` no log do
+  servidor, e seis de `esgotou 5 iterações sem resposta final`, com o rastro
+  `listar_profissionais, verificar_disponibilidade ×4`.
+
+  O QUE ISSO DÁ E O QUE NÃO DÁ. Dá que o verde da base vem da regra: sem ela o
+  cenário nunca fica verde, em sete tentativas. NÃO dá o 3/3 vermelho limpo que
+  o protocolo pede, porque tirar a regra põe o modelo a sondar disponibilidade
+  até esgotar as iterações — a condição quebrada produz SILÊNCIO, não uma
+  resposta errada estável, e silêncio não é veredito. Fica escrito assim em vez
+  de arredondado para "vermelho 3/3": medir o custo do fracasso com cara de
+  número medido é o que esta seção existe para evitar.
+
   `tenant.coexistencia: true` é OBRIGATÓRIO e não é detalhe: o guard está em
   três camadas do `sofia-bot` (`chamarAtendenteHumano` só devolve
   `modo: 'coexistencia'` sob o if; `openrouter.js` só marca

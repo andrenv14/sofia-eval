@@ -39,6 +39,25 @@ descricao: >
      "canal" e "Endodontia" são a mesma coisa em qualquer contexto
      odontológico, e o modelo não precisou da instrução.
 
+  REFEITO EM 07/09, E O RESULTADO DE 06/09 FICA DE PÉ — mas ele PRECISOU de ser
+  refeito, e a razão importa mais que o resultado. Quando aquele controle
+  correu, o eval usava UM `phone_number_id` para todos os cenários, e o
+  `sofia-bot` cacheia o tenant por esse campo durante 30s: rodada disparada
+  logo depois de outra era servida com as COLUNAS do tenant anterior. O
+  `system_prompt_extra` do `delegacao-fora-da-grade` contém a MESMA regra de
+  roteamento que este braço removia — então um braço "sem a regra" contaminado
+  teria rodado COM ela, e o verde significaria "a instrução estava lá", não "o
+  modelo não precisou dela". Era exatamente a conclusão de baixo, e ela tinha
+  ido ao fundador como decisão. Ver `tenant.phone_number_id_do_cenario`.
+
+  Refeito com os ids por cenário, contra `sofia-bot` 79c0715 sob
+  `google/gemini-3.7-flash`: base intacta PASSOU (6 chamadas, 27.084 tokens);
+  braço 1 (duração 60 → 30) FALHOU com `agendamento.duracao_minutos: esperado
+  60, obtido 30`, igual a 06/09; braço 2 (regra de roteamento removida) PASSOU
+  **3 vezes em 3** — 6/26.988, 6/27.184, 6/26.651. O verde não era artefato do
+  cache. O que está escrito abaixo continua valendo, agora sobre evidência
+  limpa — e três passadas em vez de uma.
+
   O QUE ISSO SIGNIFICA, sem maquiagem: **este cenário NÃO é guarda da regra de
   roteamento.** Se alguém apagar aquele parágrafo do prompt do tenant real,
   este cenário continua verde e não avisa ninguém. Dizer o contrário seria
