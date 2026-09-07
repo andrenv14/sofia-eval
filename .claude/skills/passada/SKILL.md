@@ -141,6 +141,43 @@ declarado. Nunca arredonde para número redondo: número redondo esconde de onde
 veio. O comentário ao lado do teto no YAML tem de dizer data, modelo e os três
 números medidos.
 
+**E o SHA. Transferir uma medição de um SHA para outro exige o HASH DA ÁRVORE
+de `src/`, nunca a leitura da mensagem do commit.** A pergunta "medi `X`, e o
+que está em produção é `Y`; a medição vale?" só tem uma resposta honesta:
+comparar o código, sem comentários, dos dois lados.
+
+```bash
+for sha in <SHA-medido> <SHA-em-producao>; do
+  h=$(git -C ~/sofia-bot ls-tree -r $sha --name-only src/ \
+      | while read f; do git -C ~/sofia-bot show $sha:$f \
+      | grep -vE "^[[:space:]]*(//|\*|/\*|\*/)"; done | md5sum)
+  echo "$sha  $h"
+done
+```
+
+Hashes iguais: a medição vale para os dois, e escreve-se qual foi medido e
+contra qual vale. Diferentes: vale só para o que foi medido, e o outro precisa
+de passada própria — mesmo que o diff "pareça" inócuo.
+
+Exercido nos dois sentidos em 07/09, e nos dois a mensagem do commit teria
+levado à conclusão errada:
+
+- `c9c42af` → `1cfc2ee` (o merge da `prompt-condicional`): três commits pelo
+  meio, um deles intitulado *"o turno passa a depender da tabela products"* —
+  que qualquer leitor classificaria como comportamental. Hashes IGUAIS: só
+  comentário mudou. A medição de `c9c42af` valia para produção, e sem o hash
+  ela teria sido descartada e refeita por US$1,24 de token.
+- `1cfc2ee` → `0dc1e37`: dois commits de registro, hashes iguais. Os tetos
+  recalibrados contra `1cfc2ee` continuaram válidos sem nova passada.
+- CONTROLE NEGATIVO, porque comando que só foi visto dizer "iguais" não provou
+  que consegue dizer "diferentes": `79c0715` → `1cfc2ee`, que é o merge de
+  verdade, dá `52c806bf…` contra `2e8aad04…`. Acusa.
+
+O caso perigoso é o simétrico, e é por isso que a regra é o hash e não o
+julgamento: um commit intitulado "ajuste de texto" que mexa numa linha
+executável passa despercebido, e a medição fica atribuída a um código que não
+foi medido. Título de commit é intenção declarada; hash é o que está lá.
+
 **Passada com turno DEGRADADO não conta para as três — repete, e a repetição
 fica registrada.** Turno degradado é a assinatura `chamadas_ia > 0` com
 `prompt_tokens = 0`: o modelo não respondeu (429 — ver passo 2), a chamada foi
