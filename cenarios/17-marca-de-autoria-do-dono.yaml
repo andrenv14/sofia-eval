@@ -1,0 +1,106 @@
+id: marca-de-autoria-do-dono
+descricao: >
+  NASCE VERMELHO DE PROPÓSITO, e é essa a função dele: existir ANTES da fatia
+  que o conserta, para provar que ela funcionou. Protocolo central deste
+  projeto — cenário antes do conserto.
+
+  O QUE ESTÁ ERRADO HOJE. Desde a fatia `fala-do-dono` (merge `d1b631c`, em
+  produção 06/09), a fala do dono em Coexistence entra no histórico da conversa
+  via `registrarFalaDoDono` (`src/session/sessionStore.js`) com
+  `role = 'assistant'` — **indistinguível de uma resposta da própria Sofia.**
+  Entra sem marca de autoria nenhuma: o `content` é o texto do dono tal e qual.
+
+  A consequência é de produto, e é cara. Se a dona da clínica escrever pelo
+  app dela "consigo te encaixar depois de amanhã às 10h", a Sofia lê aquilo no
+  turno seguinte como promessa PRÓPRIA. O paciente responde "confirmado então"
+  e ela confirma um horário que ela nunca ofereceu e não verificou.
+
+  COMO ESTE CENÁRIO MEDE ISSO SEM JULGAR TEXTO. A v1 julga efeito no banco, e
+  "ela atribuiu a si o que o dono disse" é afirmação sobre texto. A tradução
+  para efeito é direta: se a Sofia tratar a oferta do dono como sua, ela chama
+  `criar_agendamento` e NASCE UMA LINHA em `appointments`. Essa linha é a
+  asserção.
+
+  MEDIDO EM 06/09, e o vermelho é 3/3. Contra `sofia-bot` 1592748 sob
+  `google/gemini-3.7-flash`, três passadas seguidas, todas iguais: a Sofia
+  confirmou `2026-09-08 10:00 (60min)` — exactamente o horário que a DONA
+  ofereceu e que a Sofia nunca verificou. 6 chamadas, 25.809/25.278/25.479
+  tokens de prompt.
+
+  Medir três vezes não foi zelo. "Nasce vermelho" é afirmação sobre o MODELO,
+  não sobre o código: a linha do dono entra sem marca de qualquer maneira, mas
+  o modelo continua livre para perguntar em vez de confirmar. Uma passada só
+  não distinguiria "o defeito é reprodutível" de "deu azar uma vez".
+
+  Com a marca de autoria, a Sofia deve ver que a oferta não foi dela e não
+  confirmar por conta própria; o que deve nascer é nada, ou uma delegação.
+
+  QUANDO A FATIA ENTRAR, ESTE VERDE VAI PRECISAR DE COMPANHEIRO POSITIVO.
+  `agendamentos: 0` também é satisfeito pela Sofia não fazer nada de útil — é
+  a evidência fraca de sempre. O que ela DEVE fazer quando o paciente confirma
+  oferta do dono é decisão do plano da fatia, não deste cenário: fica o lugar
+  reservado e a asserção por escrever. Candidato óbvio: `humano_pendente:
+  true`, se a decisão for delegar.
+
+  O que este cenário NÃO afirma, de propósito: a FORMA da marca. A fatia que a
+  cria ainda não abriu, e afirmar forma amarraria o desenho dela a um palpite
+  meu. Afirma só o efeito: que a Sofia não converte fala do dono em
+  agendamento.
+
+  EXIGE `SILENCIO_DONO_MS_OVERRIDE` PEQUENO NA SUBIDA DO SERVIDOR:
+
+      cd ~/sofia-bot && SILENCIO_DONO_MS_OVERRIDE=1500 \
+        OPENROUTER_MODEL=google/gemini-3.7-flash npm start
+
+  O echo do dono silencia o contacto (`silenciarPorEcho`), e o valor por
+  omissão é 15 MINUTOS. Sem o override o cenário para no turno seguinte com
+  mensagem explícita — o eval lê `contatos_estado.silenciado_ate` da coluna e
+  espera o instante passar, em vez de dormir um tempo fixo, porque a duração
+  vem de uma variável de ambiente do servidor que o eval não conhece. É a
+  primeira vez que um cenário deste repositório depende de como o servidor foi
+  subido; está escrito aqui e no `SKILL.md`.
+
+  A FALA DO DONO NÃO É UM TURNO NORMAL, e a diferença é mecânica: o echo não
+  gera resposta da assistente, porque não é mensagem de cliente. Um
+  `enviar_turno` comum esperaria uma resposta que nunca vem e o cenário sairia
+  ERRO por algo que não mede. A barreira certa é a ÚLTIMA escrita do laço do
+  echo — a fala do dono a aparecer em `messages`. `silenciarPorEcho` corre
+  antes dela, então esperar pelo silêncio pararia cedo demais.
+
+  `tenant.coexistencia: true` é obrigatório: sem ele o echo nem é processado.
+
+  TENANT DE PROPÓSITO SIMPLES, sem grade nem profissionais. Este cenário não
+  mede roteamento nem disponibilidade — mede autoria. Grade estreita só
+  acrescentaria uma forma de ele reprovar por motivo alheio, e o horário
+  oferecido pelo dono tem de ser agendável em QUALQUER dia em que a rodada
+  aconteça.
+
+tenant:
+  coexistencia: true
+  service_duration_minutes: 60
+  horario_manha_inicio: "08:00"
+  horario_manha_fim: "12:00"
+  horario_tarde_inicio: "13:00"
+  horario_tarde_fim: "18:00"
+
+turnos:
+  # 1. O paciente abre. Turno normal: a Sofia responde.
+  - "oi, meu nome é Helena Braga, queria marcar uma limpeza"
+  # 2. A DONA fala pelo app dela, e a Meta devolve como echo. Não gera resposta
+  #    da assistente — só entra no histórico como `assistant`, sem marca.
+  #    O horário é agendável em qualquer dia: o tenant não tem grade e o
+  #    expediente da manhã cobre as 10h.
+  - dono: "oi Helena, consigo te encaixar depois de amanhã às 10h, pode ser?"
+  # 3. O paciente aceita a oferta que a DONA fez. Se a Sofia ler o turno 2 como
+  #    promessa própria, é aqui que ela confirma e cria a linha.
+  - "confirmado então"
+
+verificacoes:
+  # A LINHA É A ASSERÇÃO. Hoje ela nasce: a Sofia confirma um horário que ela
+  # não ofereceu nem verificou. Com a marca de autoria, não deve nascer.
+  agendamentos: 0
+  sem_agendamento_novo: true
+  # Tetos de custo ainda NÃO medidos — e não devem ser medidos enquanto o
+  # cenário estiver vermelho por comportamento. Teto medido sobre a conversa
+  # errada mede o custo do defeito, não o do comportamento correcto. Medir
+  # depois de a fatia da marca entrar e o cenário virar verde.

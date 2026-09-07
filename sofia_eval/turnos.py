@@ -16,6 +16,7 @@ Dois detalhes do sofia-bot mandam neste arquivo:
 """
 
 import time
+from datetime import datetime, timezone
 import uuid
 
 from . import banco
@@ -53,6 +54,59 @@ def enviar_turno(conn, cliente, cfg, tenant_id: int, telefone: str, texto: str, 
     cliente.enviar(telefone, texto, wamid)
     _esperar(conn, cfg, wamid, tenant_id, telefone, antes, indice, texto)
     return wamid
+
+
+def enviar_echo_do_dono(conn, cliente, cfg, tenant_id: int, telefone: str, texto: str, indice: int) -> str:
+    """Entrega a fala do dono e espera o EFEITO dela — que não é uma resposta.
+
+    O echo não gera turno da assistente: não é mensagem de cliente, é a Meta a
+    devolver o que o dono escreveu pelo app. Quem esperasse resposta aqui
+    esperaria até o timeout, e o cenário sairia ERRO por algo que não mede — o
+    mesmo mecanismo que obriga a delegação a ser o último turno.
+
+    A barreira é a ÚLTIMA escrita do laço do echo: `registrarFalaDoDono` a pôr
+    o texto do dono em `messages` como `assistant`. `silenciarPorEcho` corre
+    ANTES dela, então esperar pelo silêncio pararia cedo demais."""
+    antes = banco.falas_do_dono(conn, tenant_id, telefone, texto)
+    wamid = novo_wamid()
+    cliente.enviar_echo_do_dono(telefone, texto, wamid)
+
+    limite = time.monotonic() + cfg.timeout_turno_s
+    while time.monotonic() < limite:
+        if banco.falas_do_dono(conn, tenant_id, telefone, texto) > antes:
+            return wamid
+        time.sleep(cfg.poll_intervalo_s)
+    raise TurnoNaoProcessou(
+        f"turno {indice} (fala do dono): a fala não apareceu em `messages` em "
+        f"{cfg.timeout_turno_s:.0f}s. Causas conhecidas, todas do payload ou da "
+        "configuração: `field` diferente de `smb_message_echoes`; wamid repetido "
+        "(o servidor deduplica); wamid que a própria Sofia emitiu "
+        "(`foiEnvioProprio` salta); ou `tenant.coexistencia` esquecido no YAML, "
+        "que faz o echo nem ser processado."
+    )
+
+
+def esperar_silencio_passar(conn, cfg, tenant_id: int, telefone: str) -> None:
+    """Espera o silêncio do dono expirar antes do próximo turno do paciente.
+
+    Sem isto, a mensagem do paciente é gravada em `messages` e NUNCA respondida
+    nem enfileirada — o gate do `sofia-bot` corta antes da IA —, e o
+    `enviar_turno` seguinte morre no timeout.
+
+    Lê `contatos_estado.silenciado_ate` da COLUNA em vez de dormir um tempo
+    fixo, porque a duração vem de `SILENCIO_DONO_MS_OVERRIDE`, que é lido uma
+    vez no arranque do servidor: o eval não a conhece e não deve adivinhá-la."""
+    limite = time.monotonic() + cfg.timeout_turno_s
+    while time.monotonic() < limite:
+        ate = banco.silenciado_ate(conn, tenant_id, telefone)
+        if ate is None or ate <= datetime.now(timezone.utc):
+            return
+        time.sleep(cfg.poll_intervalo_s)
+    raise TurnoNaoProcessou(
+        f"o silêncio do dono não expirou em {cfg.timeout_turno_s:.0f}s. Suba o "
+        "servidor com `SILENCIO_DONO_MS_OVERRIDE` pequeno (a suíte do sofia-bot "
+        "usa 1500); o valor por omissão é de 15 minutos e nenhum cenário espera isso."
+    )
 
 
 def _esperar(conn, cfg, wamid: str, tenant_id: int, telefone: str, antes: int, indice: int, texto: str):

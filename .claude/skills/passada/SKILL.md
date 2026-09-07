@@ -70,6 +70,21 @@ editando o `.env`**, que é configuração da máquina do fundador:
 cd ~/sofia-bot && OPENROUTER_MODEL=<modelo> npm start
 ```
 
+**Cenário com fala do dono precisa de MAIS uma variável na subida.** O turno
+`- dono: "..."` injeta um echo, e o echo silencia o contacto por
+`SILENCIO_DONO_MS_OVERRIDE` — que é lido UMA vez no arranque do módulo
+(`src/coex/silencio.js`) e vale para o processo inteiro. O valor por omissão é
+15 MINUTOS, e nenhum cenário espera isso:
+
+```bash
+cd ~/sofia-bot && SILENCIO_DONO_MS_OVERRIDE=1500 \
+  OPENROUTER_MODEL=<modelo> npm start
+```
+
+Sem ela o cenário para no turno seguinte à fala do dono, com mensagem
+explícita a dizer isto. É a primeira dependência do repositório em COMO o
+servidor foi subido — e é por isso que ela está aqui e não só no YAML.
+
 Espere o health responder antes de seguir (não durma um tempo fixo):
 
 ```bash

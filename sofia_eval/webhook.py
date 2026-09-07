@@ -51,6 +51,54 @@ def montar_payload(phone_number_id: str, de: str, texto: str, wamid: str) -> dic
     }
 
 
+# Número do NEGÓCIO nos echos. Fictício e no padrão do repositório
+# (`5511999990NNN`), como manda o `AGENTS.md`: número de verdade não entra aqui
+# nem como exemplo.
+DONO = "5511999990000"
+
+
+def montar_payload_echo(phone_number_id: str, para: str, texto: str, wamid: str) -> dict:
+    """Espelha `montarPayloadEcho` do sofia-bot (tests/helpers/webhookPayload.js).
+
+    É a fala do DONO pelo app dele, que a Meta devolve como echo. Duas coisas
+    a separam do payload de mensagem, e as duas importam:
+
+    - `field` é `smb_message_echoes`, NÃO `messages` e NÃO `history`. O
+      `history` carrega o mesmo array `message_echoes[]`, mas de conversa
+      antiga — o sofia-bot ignora-o de propósito, senão o primeiro sync
+      calaria a Sofia por causa de mensagens de meses atrás. Com o campo
+      errado o webhook devolve 200 e não processa NADA.
+    - o corpo vai em `message_echoes[]`, com `from` = negócio e `to` = contacto.
+
+    O echo NÃO gera turno da assistente. Quem espera resposta aqui espera para
+    sempre — ver `turnos.enviar_echo_do_dono`."""
+    return {
+        "entry": [
+            {
+                "changes": [
+                    {
+                        "field": "smb_message_echoes",
+                        "value": {
+                            "messaging_product": "whatsapp",
+                            "metadata": {"phone_number_id": phone_number_id},
+                            "contacts": [{"wa_id": para}],
+                            "message_echoes": [
+                                {
+                                    "from": DONO,
+                                    "to": para,
+                                    "id": wamid,
+                                    "type": "text",
+                                    "text": {"body": texto},
+                                }
+                            ],
+                        },
+                    }
+                ]
+            }
+        ]
+    }
+
+
 def serializar(payload: dict) -> bytes:
     return json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
@@ -87,7 +135,13 @@ class Cliente:
             )
 
     def enviar(self, de: str, texto: str, wamid: str) -> None:
-        payload = montar_payload(self._cfg.phone_number_id, de, texto, wamid)
+        self._postar(montar_payload(self._cfg.phone_number_id, de, texto, wamid))
+
+    def enviar_echo_do_dono(self, para: str, texto: str, wamid: str) -> None:
+        """Entrega a fala do dono como echo. Não devolve nada e não espera nada."""
+        self._postar(montar_payload_echo(self._cfg.phone_number_id, para, texto, wamid))
+
+    def _postar(self, payload: dict) -> None:
         corpo = serializar(payload)
         url = f"{self._cfg.sofia_url}/webhook"
         try:

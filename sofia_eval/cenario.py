@@ -341,6 +341,27 @@ def carregar(caminho: Path) -> Cenario:
     if not turnos:
         raise ErroDeCenario(f"{caminho}: `turnos` está vazio")
     for i, turno in enumerate(turnos):
+        # Um turno é OU texto do paciente (como sempre foi) OU um mapa com a
+        # chave `dono`, que injeta a fala do dono como echo da Meta.
+        # Retrocompatível de propósito: nenhum cenário existente muda.
+        if isinstance(turno, dict):
+            if set(turno) != {"dono"}:
+                raise ErroDeCenario(
+                    f"{caminho}: `turnos[{i}]` é um mapa e a única chave aceita é "
+                    f"`dono`; veio {sorted(turno)}"
+                )
+            if not isinstance(turno["dono"], str) or not turno["dono"].strip():
+                raise ErroDeCenario(f"{caminho}: `turnos[{i}].dono` deveria ser um texto não vazio")
+            # Fala do dono no ÚLTIMO turno não mede nada: o que interessa é o
+            # que a Sofia faz DEPOIS dela. Recusar aqui em vez de deixar o
+            # cenário passar verde sem ter exercido o que afirma exercer.
+            if i == len(turnos) - 1:
+                raise ErroDeCenario(
+                    f"{caminho}: `turnos[{i}]` é fala do dono e é o ÚLTIMO turno. "
+                    "O efeito que se mede é o que vem DEPOIS dela — um cenário que "
+                    "termine aqui não exerce nada."
+                )
+            continue
         if not isinstance(turno, str) or not turno.strip():
             raise ErroDeCenario(f"{caminho}: `turnos[{i}]` deveria ser um texto não vazio")
 

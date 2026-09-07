@@ -178,6 +178,38 @@ def humano_pendente(conn, tenant_id: int, telefone: str) -> bool:
     return bool(linha["pendente"]) if linha else False
 
 
+def falas_do_dono(conn, tenant_id: int, telefone: str, texto: str) -> int:
+    """Quantas vezes ESTE texto do dono já está no histórico do contacto.
+
+    Desde a fatia `fala-do-dono` (`d1b631c`), `registrarFalaDoDono`
+    (`src/session/sessionStore.js`) grava a fala do dono em `messages` com
+    `role = 'assistant'` — indistinguível de uma resposta da Sofia, que é
+    precisamente o problema que o cenário da marca de autoria existe para
+    medir.
+
+    É a ÚLTIMA escrita do laço do echo (`silenciarPorEcho` vem antes), o que a
+    torna a barreira certa para saber que o echo foi processado. Não há turno
+    da assistente para esperar: echo não é mensagem de cliente."""
+    linha = conn.execute(
+        """
+        SELECT count(*) AS n FROM messages
+         WHERE tenant_id = %s AND contact_phone = %s
+           AND role = 'assistant' AND content = %s
+        """,
+        (tenant_id, telefone, texto),
+    ).fetchone()
+    return int(linha["n"])
+
+
+def silenciado_ate(conn, tenant_id: int, telefone: str):
+    """Instante em que o silêncio deste contacto acaba, ou None."""
+    linha = conn.execute(
+        "SELECT silenciado_ate FROM contatos_estado WHERE tenant_id = %s AND contact_phone = %s",
+        (tenant_id, telefone),
+    ).fetchone()
+    return linha["silenciado_ate"] if linha else None
+
+
 def status_pendente(conn, wamid: str):
     linha = conn.execute(
         "SELECT status FROM mensagens_pendentes WHERE wamid = %s", (wamid,)
