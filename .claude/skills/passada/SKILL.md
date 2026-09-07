@@ -175,10 +175,10 @@ vermelho. Verde dos dois jeitos = a asserção não mede o que afirma medir. Ver
 > deployada em 05/09, com a fatia de retentativa e a coexistência dentro) sob
 > `google/gemini-3.7-flash`.
 >
-> Resultado das 3 passadas: **8 de 9 PASSOU, e o 9º reprova de propósito** —
-> o `bot-a-bot-desengajar` nasce vermelho até o prompt do `sofia-bot` ganhar a
-> regra de silenciar (decisão do fundador de 31/08, confirmada em 06/09).
-> Reprovou nas três, sempre com 4 respostas onde a regra pede 1.
+> Resultado das 3 passadas: **8 de 9 PASSOU.** O nono era o
+> `bot-a-bot-desengajar`, vermelho de propósito nas três — RETIRADO em 06/09
+> por decisão de produto do fundador, não por defeito. Restam oito, e os oito
+> têm teto medido.
 >
 > **Zero degradações por 429 em todas as passadas.** A tempestade de 03/09, que
 > envenenou seis tentativas seguidas e produziu um verde falso, não voltou.
@@ -279,12 +279,13 @@ Se ficar verde, ele não entra na leva e o achado vale mais que a calibração.
 Restaure o YAML e registre o resultado no relato.
 
 **Passo 4 — 3 passadas dos cenários sem teto**, com o modelo declarado na
-subida. **São 8, não 9** — o `grep` abaixo devolve nove arquivos, mas o
-`bot-a-bot-desengajar` declara no próprio YAML que é sem teto POR DESENHO ("o
-que importa aqui é PARAR de responder, não quanto custou até parar"). Contar
-nove leva a fabricar um teto que o cenário recusa; a lista do `grep` é o ponto
-de partida, e a leitura do YAML é o que decide. Fonte da verdade sobre quem falta é o YAML, não uma lista escrita
-aqui, que envelhece: cenário sem `chamadas_ia_max` é cenário sem teto.
+subida. **O `grep` é o ponto de partida, a leitura do YAML é o que decide** —
+um cenário pode declarar-se sem teto POR DESENHO, e aí contá-lo na lista leva a
+fabricar uma asserção que ele recusa. Aconteceu com o `bot-a-bot-desengajar`
+enquanto ele existiu ("o que importa aqui é PARAR de responder, não quanto
+custou até parar"); ele saiu em 06/09, mas o caso pode voltar. Fonte da verdade
+sobre quem falta é o YAML, não uma lista escrita aqui, que envelhece: cenário
+sem `chamadas_ia_max` é cenário sem teto.
 Passada que voltar com ERRO por turno degradado **não conta** — repete, e a
 repetição fica registrada (regra no começo desta seção).
 Levantar a lista sem gastar nada — casando a CHAVE, não a string:
@@ -293,11 +294,15 @@ Levantar a lista sem gastar nada — casando a CHAVE, não a string:
 grep -L "^ *chamadas_ia_max:" cenarios/*.yaml
 ```
 
-O `^ *` não é firula. `grep -L "chamadas_ia_max"` sem âncora devolve 8 em vez
-de 9: o `bot-a-bot-desengajar` cita o nome da chave num COMENTÁRIO explicando
-por que NÃO tem teto, e o padrão ingênuo conta isso como se tivesse. Achado ao
-rodar o controle positivo neste próprio comando — que é a regra do
-`AGENTS.md` aplicada à ferramenta antes de ela entrar aqui. Controle: os 6
+O `^ *` não é firula, e o caso que o provou está registrado mesmo tendo
+desaparecido: enquanto o `bot-a-bot-desengajar` existiu, `grep -L
+"chamadas_ia_max"` SEM âncora devolvia 8 em vez de 9, porque aquele YAML citava
+o nome da chave num COMENTÁRIO explicando por que NÃO tinha teto — e o padrão
+ingênuo contava isso como se tivesse. Hoje os dois padrões coincidem, o que
+torna o comando ingênuo indistinguível do certo até alguém escrever de novo um
+comentário assim. Mantém-se a âncora. Achado ao rodar o controle positivo neste
+próprio comando — a regra do `AGENTS.md` aplicada à ferramenta antes de ela
+entrar aqui. Controle: os 6
 cenários da v1 têm de ficar FORA da lista.
 
 **O modelo declarado da leva 2 é `google/gemini-3.7-flash`** — o fundador
@@ -338,13 +343,13 @@ mais que compensa.
 Refaça esta medição antes de disparar (`GET /api/v1/auth/key` com a chave do
 `.env`, e `GET /api/v1/models` para o preço) — saldo é estado, não constante.
 
-**Ordem dos 9, por valor e não por número**, para que uma rodada interrompida
+**Ordem dos 8, por valor e não por número**, para que uma rodada interrompida
 deixe medido o que mais importa: `grade-do-profissional` e
 `configuracao-multiprofissional` primeiro (o segundo é pré-requisito de
-lançamento), depois `agenda-unica-um-por-vez`, `bot-a-bot-desengajar`,
-`cancelamento-correto`, `remarcacao`, `horario-de-outra-pessoa`,
-`duplicidade`, `precisa-verificar-novamente`. São nove — confira contra o
-`grep` acima antes de rodar, e não contra esta lista.
+lançamento), depois `agenda-unica-um-por-vez`, `cancelamento-correto`,
+`remarcacao`, `horario-de-outra-pessoa`, `duplicidade`,
+`precisa-verificar-novamente`. São oito — confira contra o `grep` acima antes
+de rodar, e não contra esta lista.
 
 **O que NÃO precisa entrar nesta rodada: remedir os 6 cenários da v1.** E
 desde 05/09 o argumento ficou mais simples do que era: os tetos da v1 foram

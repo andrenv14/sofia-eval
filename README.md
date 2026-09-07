@@ -270,9 +270,13 @@ de resposta. **Cenário que estoura o teto falha, mesmo acertando o
 agendamento.**
 
 `respostas_assistente_max` é guarda de **comportamento** (desengajar), não de
-custo — entrou na leva 2 para o cenário `bot-a-bot-desengajar` (ver abaixo). É
-lista, não igualdade: "desengajar" é "no máximo N respostas", nunca zero (o
-primeiro turno legítimo já grava uma).
+custo. Entrou na leva 2 para o `bot-a-bot-desengajar`, e **hoje está SEM
+CONSUMIDOR**: aquele cenário foi retirado em 06/09 por decisão de produto e
+nenhum outro usa a chave. Fica no vocabulário de propósito — está implementada,
+testada nos dois sentidos pelo `autoteste`, e a decisão que a esvaziou é de
+produto e reversível. Não é vocabulário especulativo: teve consumidor, e o
+consumidor saiu. É "no máximo N respostas", nunca zero (o primeiro turno
+legítimo já grava uma).
 
 `agendamento_status` também entrou na leva 2, para cenários com **mais de uma
 linha em jogo** (ex.: `cancelamento-correto`, que precisa provar que a linha
@@ -425,7 +429,6 @@ bug de infra gastaria token medindo o número errado.
 | `remarcacao` | trocar de horário cancela o antigo em vez de duplicar a linha |
 | `cancelamento-correto` | cancela o agendamento do contato sem tocar no de outra pessoa marcado no mesmo dia |
 | `horario-de-outra-pessoa` | não marca em cima de um agendamento real de outra pessoa (variante de `horario-ocupado` com dono) |
-| `bot-a-bot-desengajar` | detectado robô de menu de outra empresa, responde uma vez e para — achado de tráfego real de 31/08, nasce vermelho até o prompt do `sofia-bot` mudar |
 | `duplicidade` | pedir o mesmo horário duas vezes não vira duas linhas, robusto ao caminho que o modelo escolher |
 | `configuracao-multiprofissional` | com 4 profissionais no ar, o nome resolve pro profissional certo e pra duração DELE (dados fictícios, anonimizado) |
 | `precisa-verificar-novamente` | modelo não inventa confirmação em cima do "tenta de novo" ambíguo de `createEvent` — intermitente por natureza, ver descrição do YAML |
@@ -556,9 +559,10 @@ E se o webhook devolver `401`, é `WHATSAPP_APP_SECRET` diferente entre os dois
   isso, então zero rastro no banco) fica **bloqueado até a v2**.
 - Teste de carga — simular volume para estressar o loop-guard é outra
   categoria, outra ferramenta. **Não inclui** verificar que a Sofia se
-  desengaja de um robô de menu (`bot-a-bot-desengajar`, leva 2): isso é
-  comportamento de MODELO em 4 turnos determinísticos, aferido por
-  `respostas_assistente_max` — não é laço nem carga.
+  desengaja de um robô de menu: isso era comportamento de MODELO em 4 turnos
+  determinísticos, aferido por `respostas_assistente_max` — não é laço nem
+  carga. O cenário que o media (`bot-a-bot-desengajar`) saiu em 06/09 por
+  decisão de produto; a distinção de categoria continua valendo.
 - Qualquer coisa que rode na VPS.
 - Servidor, API, contêiner. (O relatório HTML é **arquivo escrito em disco**,
   não interface — não contraria este limite. Ver "Relatório HTML" acima.)

@@ -114,6 +114,14 @@ VERIFICACOES = {
     # desengajar" (31/08): o loop-guard é backstop quantitativo (35 msgs/120s,
     # 60/h) e não pega uma troca de 4 mensagens em 50s. A consulta já existia
     # sem uso — banco.turnos_da_assistente.
+    #
+    # SEM CONSUMIDOR desde 06/09: o `bot-a-bot-desengajar`, único cenário que a
+    # usava, foi retirado por decisão de produto do fundador (um detector de
+    # robô que erra cala com um cliente, e o falso positivo é silencioso).
+    # Mantida de propósito, e a distinção importa: o `AGENTS.md` proíbe
+    # vocabulário ESPECULATIVO — chave escrita antes de existir cenário que
+    # precise dela. Esta é o contrário: teve consumidor, está exercida nos dois
+    # sentidos pelo autoteste, e a decisão que a esvaziou é reversível.
     "respostas_assistente_max": (int, False),
     # Estado de linhas ESPECÍFICAS de `appointments`, identificadas por
     # (telefone, data, horario) — ao contrário de `agendamentos` (agregado) e
