@@ -178,6 +178,71 @@ def _checar_coexistencia(conn, cfg) -> list:
     return casos
 
 
+def _checar_phone_number_id(conn, cfg) -> list:
+    """O `phone_number_id` é PRÓPRIO de cada cenário — nos dois sentidos.
+
+    Esta é a guarda de uma classe que já mordeu e cujo sintoma é indistinguível
+    de bug do modelo. `getTenantByPhoneNumberId` (`src/tenants.js` do
+    sofia-bot) cacheia por `phone_number_id` com TTL de 30s; enquanto o eval
+    usava um id só para todos, o cenário seguinte era servido com as COLUNAS do
+    tenant anterior — `system_prompt_extra` e `coexistencia` inclusive — sobre
+    os FILHOS do cenário atual, porque o TRUNCATE ... RESTART IDENTITY faz o id
+    voltar a 1 sempre. Em 07/09 isso deu vermelho reprodutível no
+    `delegacao-fora-da-grade` e quase foi reportado como regressão de uma
+    branch do sofia-bot. Ver `tenant.phone_number_id_do_cenario`.
+
+    Por que a guarda tem de existir aqui e não só no comentário: se alguém
+    voltar a derivar o id de uma fonte que não varia por cenário, NADA acusa —
+    o eval segue verde e a próxima medição errada não avisa. É a mesma forma de
+    fragilidade silenciosa do contorno de `TEXTO_DEGRADADO`.
+
+    Cria e destrói tenants próprios, como `_checar_coexistencia`."""
+    casos = []
+
+    mod_tenant.limpar(conn)
+    modelo_a = mod_cenario.Cenario(id="autoteste-pni-cenario-a", caminho=RAIZ)
+    modelo_a.contato = CONTATO
+    a = mod_tenant.criar(conn, modelo_a, cfg)["phone_number_id"]
+
+    mod_tenant.limpar(conn)
+    modelo_b = mod_cenario.Cenario(id="autoteste-pni-cenario-b", caminho=RAIZ)
+    modelo_b.contato = CONTATO
+    b = mod_tenant.criar(conn, modelo_b, cfg)["phone_number_id"]
+
+    # SENTIDO 1: cenários diferentes têm de chegar à coluna com ids DIFERENTES.
+    # Contra a coluna, não contra a função — é o valor que o servidor procura.
+    casos.append((a != b,
+                  "phone_number_id: cenários diferentes nascem com ids DIFERENTES",
+                  "" if a != b else f"os dois nasceram {a!r} — o cache do sofia-bot volta a servir o tenant anterior"))
+
+    mod_tenant.limpar(conn)
+    modelo_a2 = mod_cenario.Cenario(id="autoteste-pni-cenario-a", caminho=RAIZ)
+    modelo_a2.contato = CONTATO
+    a2 = mod_tenant.criar(conn, modelo_a2, cfg)["phone_number_id"]
+
+    # SENTIDO 2: e o MESMO cenário tem de dar o MESMO id. Sem isto, "diferentes"
+    # seria satisfeito por um id aleatório por execução — que passaria neste
+    # autoteste e tornaria as rodadas irreprodutíveis.
+    casos.append((a2 == a,
+                  "phone_number_id: o MESMO cenário dá o MESMO id (determinístico)",
+                  "" if a2 == a else f"{a!r} virou {a2!r} — id aleatório não é reprodutível"))
+
+    # O CONTROLE DE SENSIBILIDADE da própria guarda: uma derivação que ignore o
+    # cenário TEM de reprovar o sentido 1. Sem isto, o caso acima nunca foi
+    # visto acusar, e guarda que só foi vista dizer "ok" não provou que
+    # consegue dizer "não". Chama a função com um id constante, que é a forma
+    # exata do defeito que existia.
+    colapsado = mod_tenant.phone_number_id_do_cenario(cfg.phone_number_id, "")
+    outro_colapsado = mod_tenant.phone_number_id_do_cenario(cfg.phone_number_id, "")
+    casos.append((colapsado == outro_colapsado and colapsado != a,
+                  "phone_number_id: derivação que NÃO varia por cenário é distinguível (a guarda acusa)",
+                  "" if colapsado == outro_colapsado and colapsado != a
+                  else f"colapsado={colapsado!r} contra a={a!r}"))
+
+    mod_tenant.limpar(conn)
+    return casos
+
+
 def _checar_status_terminais(conn, tenant) -> list:
     """Quais estados de `mensagens_pendentes` contam como TERMINAIS.
 
@@ -449,6 +514,7 @@ def main() -> int:
 
     with banco.conectar(cfg.database_url) as conn:
         resultados.extend(_checar_coexistencia(conn, cfg))
+        resultados.extend(_checar_phone_number_id(conn, cfg))
 
         mod_tenant.limpar(conn)
         modelo = mod_cenario.Cenario(id="autoteste", caminho=RAIZ, verificacoes={"agendamentos": 0})

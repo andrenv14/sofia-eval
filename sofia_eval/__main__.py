@@ -179,11 +179,23 @@ def rodar(conn, cliente, calendario, cfg, c) -> relatorio.Resultado:
                 resultado = relatorio.Resultado(
                     c.id, relatorio.ERRO,
                     [f"turno(s) degradado(s) — por assinatura: {por_assinatura}, "
-                     f"por texto de desculpa: {por_texto}. A API respondeu sem choice "
-                     "utilizável e o modelo não disse o que o cenário mede; qualquer "
-                     "veredito aqui seria sobre o silêncio, não sobre o comportamento. "
-                     "O motivo estruturado está no log do servidor: procure "
-                     "'resposta sem choice utilizável'."],
+                     f"por texto de desculpa: {por_texto}. O modelo não disse o que o "
+                     "cenário mede; qualquer veredito aqui seria sobre o silêncio, não "
+                     "sobre o comportamento.\n"
+                     "    DOIS caminhos do sofia-bot chegam a esta mesma desculpa "
+                     "(`!finalText` em openrouter.js), e o log distingue — procure os "
+                     "DOIS, porque um só manda procurar linha que pode não existir:\n"
+                     "      1) corpo sem choice utilizável (429, limite de requisição): "
+                     "'resposta sem choice utilizável'\n"
+                     "      2) o laço esgotou as iterações sem resposta final, que é "
+                     "comportamento do modelo e não infra: 'esgotou'\n"
+                     "    Em 07/09 o caminho foi o (2) e o log tinha ZERO ocorrências do "
+                     "(1) — procurar só a primeira string mandava culpar rate limit por "
+                     "um modelo que ficou a chamar ferramenta sem nunca concluir.\n"
+                     "    CUIDADO com o slug na linha do log: ele pode ser o do cenário "
+                     "ANTERIOR se algum dia o tenant voltar a ser servido de cache "
+                     "(ver tenant.phone_number_id_do_cenario). O banco é a fonte da "
+                     "verdade, o slug do log não."],
                     custo, time.monotonic() - comeco,
                     banco.resposta_da_assistente(conn, tenant["id"], c.contato),
                 )
