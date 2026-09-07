@@ -72,6 +72,15 @@ descricao: >
   de arredondado para "vermelho 3/3": medir o custo do fracasso com cara de
   número medido é o que esta seção existe para evitar.
 
+  E NÃO INSISTA POR MAIS VERMELHOS — a instrução é para quem retomar, e é
+  decisão da guia em 07/09. O braço quebrado não produz veredito estável POR
+  CONSTRUÇÃO: sem a regra, o modelo não tem para onde ir senão sondar
+  disponibilidade, e o esgotamento das iterações é o fim natural disso, não um
+  acidente de rodada. Sete tentativas já sustentam o que interessa — o verde da
+  base vem da regra, porque sem ela o cenário nunca fica verde. Arrancar 3/3 a
+  repetir seria comprar um número com a aparência de medida e o conteúdo de
+  teimosia. Um controle que declara o próprio limite vale mais.
+
   `tenant.coexistencia: true` é OBRIGATÓRIO e não é detalhe: o guard está em
   três camadas do `sofia-bot` (`chamarAtendenteHumano` só devolve
   `modo: 'coexistencia'` sob o if; `openrouter.js` só marca
