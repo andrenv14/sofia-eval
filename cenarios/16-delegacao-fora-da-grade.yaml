@@ -1,0 +1,112 @@
+id: delegacao-fora-da-grade
+descricao: >
+  Pré-requisito de lançamento, par do `configuracao-multiprofissional` — dados
+  fictícios de propósito, mesma decisão do fundador de 29/08.
+
+  O que ele prova: pedido que cai num dos casos que a clínica NÃO agenda faz a
+  Sofia chamar a ferramenta de atendente humano. Aferido pelo EFEITO —
+  `contatos_estado.humano_pendente_desde` preenchido —, nunca pelo texto da
+  resposta. É o campo que o painel do dono lê como selo "pendente de humano",
+  então a asserção afirma exatamente o que o dono vê aparecer na fila dele.
+
+  POR QUE É CENÁRIO SEPARADO, e não mais dois turnos no outro: **depois de
+  delegar, o contato fica SILENCIADO.** `silenciarPorHandoff` grava
+  `silenciado_ate` no futuro, e o gate do `sofia-bot` corta a mensagem
+  seguinte ANTES da IA — ela é gravada em `messages` e nunca respondida nem
+  enfileirada. Um turno depois da delegação nunca receberia resposta, o
+  `enviar_turno` do eval esperaria até o timeout, e o cenário sairia ERRO por
+  uma razão que não tem nada a ver com o que ele mede.
+
+  Daí a regra, que vale para qualquer cenário futuro que afira delegação:
+  **a delegação tem de ser a ÚLTIMA coisa da conversa.** Aqui isso é levado ao
+  limite — um turno só.
+
+  O turno único traz nome, serviço e preferência de uma vez, e isso é
+  deliberado: a regra do tenant manda a Sofia colher os três antes de passar e
+  perguntar o que faltar. Dando os três, não sobra nada para perguntar, e a
+  delegação deve acontecer no primeiro turno. Se ela ainda assim pedir mais
+  alguma coisa, o cenário reprova — e reprova com razão, porque a regra diz
+  "numa mensagem só".
+
+  ESTE CENÁRIO NASCE VERDE, mas a evidência aqui é FORTE, ao contrário da dos
+  outros dois que nascem verdes. `agendamentos: 0` fica verde por várias
+  causas; `humano_pendente: true` é asserção POSITIVA — exige que uma linha
+  passe a existir. Não há como satisfazê-la por vacuidade: ou a ferramenta foi
+  chamada e o efeito chegou ao banco, ou não foi.
+
+  CONTROLE DE SENSIBILIDADE FEITO EM 06/09, e PASSOU. Contra `sofia-bot`
+  1592748 sob `google/gemini-3.7-flash`:
+    - COM a regra dos três casos: PASSOU (2 chamadas, 8.825 tokens);
+    - SEM ela (parágrafo removido do `system_prompt_extra`): FALHOU, e pelo
+      motivo certo — `humano_pendente` não apareceu em 5s, e a Sofia foi
+      oferecer horários de sexta em vez de delegar. 5 chamadas, 21.823 tokens.
+
+  Ou seja: o verde vem da regra, não de acaso, e a chave `humano_pendente`
+  consegue acusar contra o servidor real — não só no autoteste. Refazer se o
+  caminho de `silenciarPorHandoff` ou o guard de `coexistencia` mudarem.
+
+  `tenant.coexistencia: true` é OBRIGATÓRIO e não é detalhe: o guard está em
+  três camadas do `sofia-bot` (`chamarAtendenteHumano` só devolve
+  `modo: 'coexistencia'` sob o if; `openrouter.js` só marca
+  `efeitos.escalouParaHumano` nesse modo; só então `server.js` chama
+  `silenciarPorHandoff`). Em tenant comum a linha NUNCA é escrita — não é
+  escrita-e-ignorada, é nunca escrita — e este cenário daria falso vermelho.
+
+tenant:
+  coexistencia: true
+  service_duration_minutes: 30
+  slot_interval_minutes: 30
+  horario_manha_inicio: "08:00"
+  horario_manha_fim: "12:00"
+  horario_tarde_inicio: "13:00"
+  horario_tarde_fim: "18:00"
+  system_prompt_extra: >-
+    Esta clínica atende um paciente por vez. Escolha a agenda pelo SERVIÇO,
+    nunca perguntando com qual profissional: canal e retratamento de canal vão
+    para Endodontia; todo o resto vai para Clínica geral. Não pergunte ao
+    paciente com quem ele quer marcar.
+
+    NÃO agende, e não ofereça horário, nestes três casos: sábado em qualquer
+    horário; quinta-feira a partir das 14h; criança com menos de 6 anos.
+    Nesses casos faça o seguinte, nesta ordem: (1) garanta que você tem o nome
+    completo do paciente, o serviço e o dia ou período que ele prefere —
+    pergunte o que faltar, numa mensagem só; (2) diga que a clínica confirma
+    esse horário direto com ele, por aqui mesmo; (3) chame a ferramenta de
+    atendente humano e pare de atender. Nunca diga que a clínica não atende
+    nesses casos: diga que a clínica confirma.
+  profissionais:
+    - nome: Clínica geral
+      service_duration_minutes: 30
+      # Grade de propósito SEM sábado — fiel ao tenant real, e é o que torna o
+      # sábado um caso de delegação em vez de um horário indisponível
+      # qualquer. A diferença importa: indisponível a Sofia recusaria sozinha;
+      # delegado ela tem de passar para a equipe.
+      grade:
+        - { dia_semana: 1, hora_inicio: "14:00", hora_fim: "18:00" }
+        - { dia_semana: 2, hora_inicio: "09:00", hora_fim: "12:00" }
+        - { dia_semana: 2, hora_inicio: "14:00", hora_fim: "18:00" }
+        - { dia_semana: 3, hora_inicio: "09:00", hora_fim: "12:00" }
+        - { dia_semana: 3, hora_inicio: "14:00", hora_fim: "18:00" }
+        - { dia_semana: 4, hora_inicio: "09:00", hora_fim: "12:00" }
+        - { dia_semana: 5, hora_inicio: "09:00", hora_fim: "12:00" }
+        - { dia_semana: 5, hora_inicio: "14:00", hora_fim: "18:00" }
+    - nome: Endodontia
+      service_duration_minutes: 60
+      grade:
+        - { dia_semana: 1, hora_inicio: "08:30", hora_fim: "11:30" }
+
+turnos:
+  # UM turno, e a razão está na descrição: depois de delegar o contato fica
+  # silenciado, e um segundo turno morreria no gate sem resposta. Traz nome,
+  # serviço e preferência juntos, que é o que a regra manda colher.
+  - "oi, meu nome é Helena Braga, queria marcar uma limpeza no sábado de manhã"
+
+verificacoes:
+  # A asserção POSITIVA é a principal: a ferramenta foi chamada e o efeito
+  # chegou ao banco. As duas negativas fecham o outro lado — delegar não pode
+  # significar marcar assim mesmo.
+  humano_pendente: true
+  agendamentos: 0
+  sem_agendamento_novo: true
+  # Tetos de custo ainda NÃO medidos — pendente 3 passadas sob o modelo
+  # declarado. Cenário novo de 06/09.

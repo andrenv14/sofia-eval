@@ -1,85 +1,154 @@
 id: configuracao-multiprofissional
 descricao: >
-  Pré-requisito de lançamento de um tenant real com 4 profissionais e agenda
-  única — dados fictícios de propósito (decisão do fundador, 29/08: entra
-  sem os dados reais do cliente que este cenário protege; nome do cliente
-  não pertence a repositório versionado, nem como identificador de cenário).
+  Pré-requisito de lançamento de um tenant real — dados fictícios de propósito
+  (decisão do fundador, 29/08: entra sem os dados reais do cliente que este
+  cenário protege; nome de cliente, de profissional e de convênio não
+  pertencem a repositório versionado, nem como identificador de cenário).
 
-  Prova UMA coisa, e de propósito: o nome resolve para o profissional CERTO,
-  com a duração DELE — não a do tenant nem a de outro profissional.
+  REESCRITO EM 06/09. A versão anterior protegia um desenho que não foi o
+  aplicado: quatro profissionais com nome de gente, e o cenário provava que o
+  NOME resolvia para o profissional certo. O desenho que foi ao ar em 06/09 é
+  outro, e é o que precisa de guarda:
 
-  CORREÇÃO (03/09): a versão anterior deste cenário afirmava uma segunda
-  coisa — que dois profissionais diferentes podem ser marcados no MESMO
-  horário sem colisão — e estava ERRADA. `getBusyIntervals`
-  (`googleCalendar.js`) lista o dia inteiro do calendário resolvido e **não
-  filtra por profissional**. E o calendário resolvido é o MESMO para todos:
-  `tenant.py` grava `cfg.google_calendar_id` em cada linha de `professionals`,
-  então `resolveCalendarId` toma o ramo do profissional (não o do tenant) e
-  devolve o mesmo id para qualquer um deles. Ou seja: neste repositório todo
-  cenário tem AGENDA ÚNICA, e nela o segundo profissional colide com o evento
-  do primeiro. O agendamento semeado abaixo foi movido
-  para as 11h justamente por isso — às 9h ele bloquearia a marcação com a
-  Beatriz e o cenário reprovaria por um motivo que não é o que ele mede.
-  Quem afere a colisão entre profissionais, exigindo a recusa, é o
-  `agenda-unica-um-por-vez`.
+  **as linhas de agenda não são pessoas, são SERVIÇOS**, e o roteamento é pelo
+  serviço pedido — nunca perguntando ao paciente com quem ele quer marcar.
 
-  Exercita `agenda_ocupada[].profissional` pela primeira vez na leva — README
-  já documentava a chave, mas nenhum cenário da v1 a usava (achado da fila,
-  27/08). `profissional:` é OBRIGATÓRIO neste item: sem ele, `agenda.py`
-  insere `professional_id` nulo, e a trigger `BEFORE INSERT` da camada 4 de
-  `nome-profissional-obrigatorio.md` recusa isso com erro cru de Postgres —
-  a semeadura estoura antes do primeiro turno.
+  O que este cenário prova, e é UMA coisa: pedido de canal roteia para a linha
+  de Endodontia, e não para a Clínica geral.
 
-  FORA deste cenário, mas não mais impossível: grade e exceção por
-  profissional. Desde a semeadura de `professional_availability` /
-  `_exceptions` (chaves `grade` e `excecoes` em `tenant.profissionais[]`),
-  quem prova esse lado é o `grade-do-profissional`. Aqui os quatro seguem
-  SEM grade de propósito — profissional sem nenhuma linha não é restringido
-  (`temGradeConfigurada`), e é isso que mantém este cenário medindo só
-  resolução de nome e duração, sem a grade interferir no veredito.
+  COMO ele prova, e a escolha é o que o torna determinístico: pela DURAÇÃO.
+  Endodontia atende em 60 minutos e a Clínica geral em 30. Se o agendamento
+  nasce com 60, foi para a linha certa. Isso não depende do dia em que a
+  rodada acontece — e depender do dia seria fatal aqui, porque a Endodontia só
+  tem grade às SEGUNDAS de manhã. Uma asserção por data exigiria que o eval
+  soubesse mirar dia da semana, o que `datas.resolver` não faz (aceita só
+  'AAAA-MM-DD', '+N' e 'hoje'). A duração contorna isso sem enfraquecer nada:
+  ela é o efeito que separa as duas linhas.
+
+  CONTROLE DE SENSIBILIDADE, 06/09 — os dois lados foram exercidos, e o
+  resultado NÃO é o esperado. Fica escrito por inteiro, porque metade dele
+  enfraquece o que este cenário pode alegar.
+
+  1. **Quebrando a ASSERÇÃO (duração da Endodontia 60 → 30): FICOU VERMELHO.**
+     `agendamento.duracao_minutos: esperado 60, obtido 30`. A asserção não é
+     decoração — ela consegue acusar.
+
+  2. **Quebrando a REGRA DE ROTEAMENTO (parágrafo removido do
+     `system_prompt_extra`): FICOU VERDE.** A Sofia mandou o canal para a
+     Endodontia do mesmo jeito. O nome da linha carrega o mapeamento sozinho —
+     "canal" e "Endodontia" são a mesma coisa em qualquer contexto
+     odontológico, e o modelo não precisou da instrução.
+
+  O QUE ISSO SIGNIFICA, sem maquiagem: **este cenário NÃO é guarda da regra de
+  roteamento.** Se alguém apagar aquele parágrafo do prompt do tenant real,
+  este cenário continua verde e não avisa ninguém. Dizer o contrário seria
+  vender uma proteção que ele não dá.
+
+  O que ele guarda, e continua valendo para o lançamento: o EFEITO. Que o
+  pedido de canal termina numa linha de 60 minutos chamada Endodontia. Isso
+  reprova se a grade for mal configurada, se a duração por linha deixar de ser
+  aplicada, se `resolveCalendarId` mudar de ramo, ou se a Sofia passar a
+  perguntar "com quem". São regressões estruturais, e são as que quebram o
+  cliente — a instrução do prompt é cinto sobre suspensório.
+
+  Para ele virar guarda da REGRA seria preciso tirar a pista do nome (linhas
+  chamadas "Linha A" e "Linha B", por exemplo). Isso mediria outra coisa, e o
+  nome real do tenant é o que está no ar — mudá-lo tornaria o cenário infiel à
+  configuração que ele existe para proteger. Fica registrado como escolha, não
+  como esquecimento.
+
+  O QUE O VERDE DAQUI NÃO DIZ: que a Sofia escolheu a linha pelo motivo certo.
+  O controle 2 acima é a prova disso, e não uma suspeita. O que o verde afirma
+  é o efeito — a linha certa, com a duração dela. Não afirma nada sobre
+  convênio, preço ou os casos delegados; esses são de outros cenários.
+
+  Escopo do `system_prompt_extra` abaixo, e por que ele não é a cópia do real:
+  entram as regras ESTRUTURAIS (roteamento por serviço, a janela da
+  Endodontia, os três casos que não se agenda). Ficam de fora as regras
+  conversacionais do tenant real — pedir nome, idade e convênio no início,
+  a lista de planos, a proibição de preço. Elas alongariam a conversa sem
+  mudar o que este cenário afere, e cada turno é uma chamada real de LLM.
+  Quem quiser guarda para elas escreve cenário próprio.
 
 tenant:
+  # 30 min é o padrão do NEGÓCIO; a Endodontia sobrescreve para 60. É essa
+  # diferença que a asserção lê.
   service_duration_minutes: 30
   slot_interval_minutes: 30
   horario_manha_inicio: "08:00"
   horario_manha_fim: "12:00"
-  profissionais:
-    - nome: Beatriz
-      service_duration_minutes: 45
-    - nome: Carlos
-      service_duration_minutes: 30
-    - nome: Denise
-      service_duration_minutes: 60
-    - nome: Eduardo
-      service_duration_minutes: 30
+  horario_tarde_inicio: "13:00"
+  horario_tarde_fim: "18:00"
+  system_prompt_extra: >-
+    Esta clínica atende um paciente por vez. Escolha a agenda pelo SERVIÇO,
+    nunca perguntando com qual profissional: canal e retratamento de canal vão
+    para Endodontia; todo o resto vai para Clínica geral. Não pergunte ao
+    paciente com quem ele quer marcar.
 
-agenda_ocupada:
-  # Agendamento de verdade de outra pessoa, com a Denise, em horário que NÃO
-  # conflita com o que o contato vai marcar (11h contra 9h). Agenda única:
-  # se estivesse às 9h, bloquearia a Beatriz — ver a correção na descrição.
-  - data: "+2"
-    horario: "11:00"
-    duracao_minutos: 60
-    titulo: "Atendimento - Fernanda Lopes"
-    telefone: "5511999990006"
-    profissional: Denise
+    Canal e retratamento de canal (Endodontia) só têm horário às
+    SEGUNDAS-FEIRAS DE MANHÃ, das 08:30 às 11:30 — nunca à tarde, nunca em
+    outro dia. Se o paciente pedir canal em outro dia ou período, diga isso de
+    uma vez e ofereça a próxima segunda de manhã; NÃO verifique
+    disponibilidade em outros dias. Se verificar disponibilidade e voltar sem
+    horário, não tente outro dia por conta própria: diga ao paciente o que
+    encontrou e pergunte o que ele prefere.
+
+    NÃO agende, e não ofereça horário, nestes três casos: sábado em qualquer
+    horário; quinta-feira a partir das 14h; criança com menos de 6 anos.
+    Nesses casos colha nome, serviço e preferência, diga que a clínica
+    confirma direto com o paciente por aqui, chame a ferramenta de atendente
+    humano e pare de atender.
+  profissionais:
+    # NOMES DE SERVIÇO, não de pessoa — é o desenho aplicado, e é o que o
+    # roteamento por serviço exige. Os dois compartilham o mesmo calendário
+    # (o eval sempre grava o mesmo `google_calendar_id` em todos), então um
+    # evento numa linha bloqueia a outra. Isso é fiel ao tenant real, onde as
+    # duas linhas também estão no mesmo `primary`.
+    - nome: Clínica geral
+      service_duration_minutes: 30
+      grade:
+        - { dia_semana: 1, hora_inicio: "14:00", hora_fim: "18:00" }
+        - { dia_semana: 2, hora_inicio: "09:00", hora_fim: "12:00" }
+        - { dia_semana: 2, hora_inicio: "14:00", hora_fim: "18:00" }
+        - { dia_semana: 3, hora_inicio: "09:00", hora_fim: "12:00" }
+        - { dia_semana: 3, hora_inicio: "14:00", hora_fim: "18:00" }
+        - { dia_semana: 4, hora_inicio: "09:00", hora_fim: "12:00" }
+        - { dia_semana: 5, hora_inicio: "09:00", hora_fim: "12:00" }
+        - { dia_semana: 5, hora_inicio: "14:00", hora_fim: "18:00" }
+    # Segunda de manhã, e só. A janela estreita é o ponto: é ela que fez o
+    # modelo sondar disponibilidade quatro vezes em produção (06/09) até
+    # esgotar as 5 iterações, porque `listar_profissionais` devolve só nomes e
+    # a checagem por período volta vazia sem dizer o motivo. O teto de custo
+    # deste cenário é a guarda contra essa volta: esgotar iterações estoura
+    # `chamadas_ia_max` muito antes de virar sintoma na conversa.
+    - nome: Endodontia
+      service_duration_minutes: 60
+      grade:
+        - { dia_semana: 1, hora_inicio: "08:30", hora_fim: "11:30" }
 
 turnos:
-  - "quero marcar com a beatriz"
-  - "depois de amanhã às 9h"
-  - "confirma, meu nome é Gustavo Ramos"
+  # O nome vem no primeiro turno de propósito, para a conversa não gastar um
+  # turno inteiro só a colhê-lo. O pedido NÃO diz "com quem" nem cita a linha:
+  # dizer "quero marcar na Endodontia" tornaria o roteamento trivial e o
+  # cenário deixaria de medir o que afirma medir.
+  - "oi, meu nome é Marcos Vieira e eu preciso fazer um canal"
+  # Nomeia a hora de propósito. A primeira tentativa dizia "pode confirmar esse
+  # horário" e o cenário reprovou sem medir nada: a Sofia tinha oferecido TRÊS
+  # (08h30, 09h30, 10h30 — os três slots de 60 min da janela da Endodontia) e
+  # esperava uma escolha. O roteamento já estava certo ali; o roteiro é que
+  # era curto. 08h30 é determinístico: é sempre o primeiro slot da janela, em
+  # qualquer segunda, com o dia livre.
+  - "pode ser às 8h30 então"
 
 verificacoes:
-  agendamentos: 2               # a da Denise (terceiro, intocada) + a nova da Beatriz
+  # A DURAÇÃO é a asserção, e é ela que separa as duas linhas: 60 é
+  # Endodontia, 30 seria Clínica geral. `profissional` confirma pelo nome, e
+  # os dois juntos fecham a porta de o agendamento ter nascido certo por um
+  # caminho errado.
+  agendamentos: 1
   agendamento:
-    profissional: Beatriz
-    duracao_minutos: 45         # duração DELA — não 30 (tenant/Carlos/Eduardo), não 60 (Denise)
-    horario: "09:00"
-    telefone: contato
-  # Tetos = 2 × o máximo medido em 3 passadas (2026-09-05,
-  # google/gemini-3.7-flash, contra sofia-bot 45dc8e8): chamadas 8/9/8, tokens de prompt
-  # 33.837/38.214/33.397. Máximos: 9 e 38.214.
-  # A folga de 100% existe porque a variação natural é de ±1 chamada e o
-  # teto tem de pegar CURVA (o incidente foi 61 chamadas / 530.575 tokens).
-  chamadas_ia_max: 18
-  tokens_prompt_max: 76428
+    duracao_minutos: 60
+    profissional: Endodontia
+  # Tetos de custo ainda NÃO medidos — pendente 3 passadas sob o modelo
+  # declarado. O cenário mudou de forma em 06/09 e os tetos da versão
+  # anterior (18 / 76.428) não valem para ele: mediam outra conversa.
