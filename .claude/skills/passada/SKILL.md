@@ -382,3 +382,63 @@ como registro do que o luna custava, não como sustentação dos tetos.
 
 Remedir a v1 aperta a guarda, o que é bom, mas não destrava nada e aumentaria o
 custo da rodada. Vale como fatia própria, depois — não como pré-requisito.
+
+**FEITO EM 07/09, e o que a fatia encontrou desmente o parágrafo acima em uma
+coisa: não era só apertar a guarda, era repor margem que já tinha sumido.**
+
+Medida a v1 (cenários 01–06) contra a main de então, `79c0715`, sob
+`google/gemini-3.7-flash`, 3 passadas, com `phone_number_id` por cenário
+(`a224ad7`) — a primeira medição limpa que esses cenários tiveram, porque todas
+as anteriores correram com um id só para todos e o `sofia-bot` servia o tenant
+de cache por 30s entre cenários. 18/18 PASSOU, zero degradadas.
+
+| cenário | máx em `79c0715` | teto de 25/08 | folga real |
+|---|---|---|---|
+| duracao-por-profissional | 51.896 | 113.314 | 2,18× |
+| agendamento-executa-nao-descreve | 51.302 | 78.000 | **1,52×** |
+| cancelar-de-terceiro | 20.619 | 38.000 | **1,84×** |
+| horario-ocupado | 29.977 | 55.000 | **1,83×** |
+| data-relativa | 42.567 | 62.000 | **1,46×** |
+| fora-do-horario | 34.034 | 55.000 | **1,62×** |
+
+**CINCO DOS SEIS estavam abaixo dos 2× que o comentário de cada YAML promete**,
+e ninguém tinha olhado: o prompt do sistema cresceu desde agosto e os tetos
+ficaram parados. O `agendamento-executa-nao-descreve` foi de 38.524 tokens em
+25/08 para 51.302 — mais 33%. Nenhum estourou, e a guarda estava a funcionar;
+o que tinha desaparecido era a margem para ela pegar CURVA, que é a razão de o
+teto ser 2× e não 1,1×.
+
+Nota de método, para quem repetir: o modo de falha de um teto largo demais é
+NÃO ACUSAR uma regressão de custo. Ele não faz barulho — some. Por isso a folga
+tem de ser medida de vez em quando, e não só quando um cenário reprova.
+
+**Recalibrados em 07/09 contra `1cfc2ee`** (a main com a `prompt-condicional`
+dentro), 3 passadas, mesmo modelo, mesmos ids por cenário. 18/18 PASSOU, zero
+degradadas. Os números por cenário estão no YAML de cada um; a ordem foi
+deliberada — medir DEPOIS do merge, e não antes, porque teto calibrado contra
+um prompt que está de saída nasce largo no dia seguinte.
+
+**O par antes/depois, que é a primeira medição honesta do que a fatia entrega.**
+3 passadas contra 3, mesmos cenários, mesmo modelo, mesmos ids; média por
+cenário, em tokens de prompt:
+
+| cenário | `79c0715` | `1cfc2ee` | Δ |
+|---|---|---|---|
+| duracao-por-profissional | 50.169 | 45.174 | −10,0% |
+| agendamento-executa-nao-descreve | 48.022 | 35.872 | −25,3% |
+| cancelar-de-terceiro | 20.554 | 17.521 | −14,8% |
+| horario-ocupado | 29.652 | 23.295 | −21,4% |
+| data-relativa | 39.396 | 27.241 | −30,9% |
+| fora-do-horario | 32.584 | 21.095 | −35,3% |
+| **TOTAL** | **220.376** | **170.198** | **−22,8%** |
+
+Nos cenários da v1 o corte é MAIOR que os −18,0% da rodada dos 16 medida no
+mesmo dia — e a diferença tem explicação: a tabela dos 16 compara contra as
+calibrações ANTIGAS (agosto e 05–07/09, várias delas contaminadas pelo cache),
+enquanto esta compara duas medições limpas feitas com horas de diferença. É a
+mesma fatia; o que muda é a qualidade do "antes".
+
+**O que fica por fazer, e é fatia própria:** os outros dez cenários continuam
+com tetos de 05–07/09, calibrados contra o prompt velho e alguns deles em
+rodadas dentro da janela do cache. Eles têm folga hoje, mas a folga não foi
+medida contra `1cfc2ee`. Quando alguém for lá, o comando é o mesmo desta fatia.

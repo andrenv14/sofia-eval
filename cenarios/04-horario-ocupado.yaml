@@ -21,9 +21,26 @@ turnos:
 verificacoes:
   agendamentos: 0
   sem_agendamento_novo: true
-  # Tetos = 2 × o máximo medido em 3 passadas (2026-08-25,
-  # google/gemini-3.7-flash): 7 chamadas, 27.277 tokens de prompt.
+  # Tetos = 2 × o máximo medido em 3 passadas (2026-09-07,
+  # google/gemini-3.7-flash, contra sofia-bot 1cfc2ee — a main com a
+  # `prompt-condicional` dentro): chamadas 7/7/8, tokens de prompt
+  # 22.229/21.997/25.659. Máximos: 8 e 25.659.
+  #
+  # RECALIBRADO, E NÃO POR ROTINA: a margem tinha encolhido sem ninguém
+  # olhar. Medido contra a main ANTERIOR (79c0715) em 07/09, este cenário
+  # custava até 29.977 tokens contra um teto de 55.000 — folga real de
+  # 1,83×, e não os 2× que este comentário promete. Cinco dos seis cenários
+  # da v1 estavam assim: o prompt cresceu desde agosto e os tetos não
+  # acompanharam.
+  # A `prompt-condicional` devolveu a folga, e estes números nascem contra
+  # o prompt que FICA, não contra o que saiu.
+  #
+  # As três passadas correram com um `phone_number_id` por cenário (a224ad7).
+  # As calibrações anteriores a 07/09 correram com um id só para todos, e o
+  # sofia-bot servia o tenant de cache por 30s entre cenários — por isso a
+  # medição de 79c0715 acima é a primeira limpa que este cenário teve.
+  #
   # A folga de 100% existe porque a variação natural é de ±1 chamada e o
   # teto tem de pegar CURVA (o incidente foi 61 chamadas / 530.575 tokens).
-  chamadas_ia_max: 14
-  tokens_prompt_max: 55000
+  chamadas_ia_max: 16
+  tokens_prompt_max: 51318
