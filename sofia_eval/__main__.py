@@ -145,13 +145,13 @@ def rodar(conn, cliente, calendario, cfg, c) -> relatorio.Resultado:
             for i, turno in enumerate(c.turnos, start=1):
                 if isinstance(turno, dict):
                     turnos.enviar_echo_do_dono(
-                        conn, cliente, cfg, tenant["id"], c.contato, turno["dono"], i
+                        conn, cliente, cfg, tenant, c.contato, turno["dono"], i
                     )
                     # O echo silencia o contacto. O turno seguinte só pode ir
                     # depois de o silêncio passar, senão é engolido pelo gate.
                     turnos.esperar_silencio_passar(conn, cfg, tenant["id"], c.contato)
                     continue
-                turnos.enviar_turno(conn, cliente, cfg, tenant["id"], c.contato, turno, i)
+                turnos.enviar_turno(conn, cliente, cfg, tenant, c.contato, turno, i)
         except (turnos.TurnoNaoProcessou, webhook.ErroDeWebhook) as err:
             if isinstance(err, webhook.ServidorForaDoAr):
                 raise

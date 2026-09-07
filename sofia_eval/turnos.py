@@ -47,16 +47,19 @@ def novo_wamid() -> str:
     return f"wamid.eval-{uuid.uuid4().hex}"
 
 
-def enviar_turno(conn, cliente, cfg, tenant_id: int, telefone: str, texto: str, indice: int) -> str:
+# `tenant` inteiro, e não `tenant_id`: o envio precisa do `phone_number_id` da
+# linha recém-criada, que agora varia por cenário. Passar a linha evita derivar
+# o id duas vezes por caminhos diferentes.
+def enviar_turno(conn, cliente, cfg, tenant, telefone: str, texto: str, indice: int) -> str:
     """Manda um turno e só volta quando ele saiu de 'pendente'/'processando'."""
-    antes = banco.turnos_da_assistente(conn, tenant_id, telefone)
+    antes = banco.turnos_da_assistente(conn, tenant["id"], telefone)
     wamid = novo_wamid()
-    cliente.enviar(telefone, texto, wamid)
-    _esperar(conn, cfg, wamid, tenant_id, telefone, antes, indice, texto)
+    cliente.enviar(tenant["phone_number_id"], telefone, texto, wamid)
+    _esperar(conn, cfg, wamid, tenant["id"], telefone, antes, indice, texto)
     return wamid
 
 
-def enviar_echo_do_dono(conn, cliente, cfg, tenant_id: int, telefone: str, texto: str, indice: int) -> str:
+def enviar_echo_do_dono(conn, cliente, cfg, tenant, telefone: str, texto: str, indice: int) -> str:
     """Entrega a fala do dono e espera o EFEITO dela — que não é uma resposta.
 
     O echo não gera turno da assistente: não é mensagem de cliente, é a Meta a
@@ -67,13 +70,13 @@ def enviar_echo_do_dono(conn, cliente, cfg, tenant_id: int, telefone: str, texto
     A barreira é a ÚLTIMA escrita do laço do echo: `registrarFalaDoDono` a pôr
     o texto do dono em `messages` como `assistant`. `silenciarPorEcho` corre
     ANTES dela, então esperar pelo silêncio pararia cedo demais."""
-    antes = banco.falas_do_dono(conn, tenant_id, telefone, texto)
+    antes = banco.falas_do_dono(conn, tenant["id"], telefone, texto)
     wamid = novo_wamid()
-    cliente.enviar_echo_do_dono(telefone, texto, wamid)
+    cliente.enviar_echo_do_dono(tenant["phone_number_id"], telefone, texto, wamid)
 
     limite = time.monotonic() + cfg.timeout_turno_s
     while time.monotonic() < limite:
-        if banco.falas_do_dono(conn, tenant_id, telefone, texto) > antes:
+        if banco.falas_do_dono(conn, tenant["id"], telefone, texto) > antes:
             return wamid
         time.sleep(cfg.poll_intervalo_s)
     raise TurnoNaoProcessou(

@@ -134,12 +134,16 @@ class Cliente:
                 + COMO_SUBIR.format(url=url)
             )
 
-    def enviar(self, de: str, texto: str, wamid: str) -> None:
-        self._postar(montar_payload(self._cfg.phone_number_id, de, texto, wamid))
+    # O `phone_number_id` vem de QUEM CHAMA, e não de `cfg`, porque ele varia
+    # por cenário (`tenant.phone_number_id_do_cenario`). Quem chama passa o que
+    # está na linha do tenant recém-criada, então as duas pontas — a que o
+    # servidor procura no banco e a que chega no payload — não podem divergir.
+    def enviar(self, phone_number_id: str, de: str, texto: str, wamid: str) -> None:
+        self._postar(montar_payload(phone_number_id, de, texto, wamid))
 
-    def enviar_echo_do_dono(self, para: str, texto: str, wamid: str) -> None:
+    def enviar_echo_do_dono(self, phone_number_id: str, para: str, texto: str, wamid: str) -> None:
         """Entrega a fala do dono como echo. Não devolve nada e não espera nada."""
-        self._postar(montar_payload_echo(self._cfg.phone_number_id, para, texto, wamid))
+        self._postar(montar_payload_echo(phone_number_id, para, texto, wamid))
 
     def _postar(self, payload: dict) -> None:
         corpo = serializar(payload)

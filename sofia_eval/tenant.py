@@ -5,7 +5,37 @@ de propósito — se lá muda, aqui tem de mudar junto, senão um cenário herda
 estado do anterior.
 """
 
+import hashlib
+
 from . import datas
+
+
+def phone_number_id_do_cenario(base: str, cenario_id: str) -> str:
+    """Um `phone_number_id` POR CENÁRIO, e não é cosmética.
+
+    `getTenantByPhoneNumberId` (`src/tenants.js` do sofia-bot) cacheia por
+    `phone_number_id`, com `CACHE_TTL_MS = 30_000`. Enquanto todos os cenários
+    partilhavam um id só, o cenário seguinte era atendido com o tenant do
+    ANTERIOR até o TTL expirar — o `slug` dele no log e, o que importa, o
+    `system_prompt_extra` dele no prompt de sistema.
+
+    MEDIDO EM 07/09, e o custo foi um diagnóstico inteiro: o
+    `delegacao-fora-da-grade` corria sem a regra dos três casos do próprio
+    tenant e oferecia horário em vez de delegar — 5 chamadas em vez de 2,
+    sempre verde quando ABRIA a rodada, vermelho quando vinha depois de outro
+    cenário. Passou por regressão da branch `prompt-condicional` até o
+    controle contra a `main` reproduzir o mesmo padrão (PASSOU/FALHOU/PASSOU/
+    degradado nas duas). Não era da branch: era este cache.
+
+    O TTL de 30s NÃO é defeito de produção — lá cada tenant tem o seu
+    `phone_number_id`, e o cache é deliberado. Quem tinha de variar era o eval.
+
+    Numérico como um id real da Meta, e MAIS LONGO que um: o sufixo derivado
+    mantém a promessa do comentário em `criar` de que nenhum tenant real usa
+    estes números. Determinístico para a rodada ser reproduzível.
+    """
+    sufixo = int(hashlib.sha1(cenario_id.encode("utf-8")).hexdigest(), 16) % 10**6
+    return f"{base}{sufixo:06d}"
 
 # Espelha tests/setup.js do sofia-bot (RESTART IDENTITY CASCADE inclusive).
 TABELAS = (
@@ -57,8 +87,9 @@ def criar(conn, cenario, cfg) -> dict:
     campos.update(
         {
             "slug": f"eval-{cenario.id}",
-            # Fictício: nenhum tenant real usa este phone_number_id.
-            "phone_number_id": cfg.phone_number_id,
+            # Fictício: nenhum tenant real usa este phone_number_id. Próprio
+            # de cada cenário — ver phone_number_id_do_cenario.
+            "phone_number_id": phone_number_id_do_cenario(cfg.phone_number_id, cenario.id),
             # Token falso — nada sai pra Meta. A resposta da assistente é lida
             # de `messages`, onde pushTurn grava ANTES do envio.
             "whatsapp_access_token": "token-falso-do-eval",
