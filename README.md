@@ -10,7 +10,7 @@ que duração? no nome de quem?
 [`sofia-vitrine`](https://github.com/andrenv14/sofia-vitrine) mostra a
 arquitetura da assistente; este mostra como eu provo que ela decide certo.
 
-**No ar:** [riachotech.com.br](https://riachotech.com.br) ·
+**No ar:** [riachotech.com.br](https://riachotech.com.br) ([o código do site](https://github.com/andrenv14/riachotech-site)) ·
 [@riacho_tech](https://www.instagram.com/riacho_tech/)
 
 ---
