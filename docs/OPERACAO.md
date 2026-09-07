@@ -12,8 +12,8 @@ verificação, de propósito.
 
 O `sofia-bot` (código privado — a arquitetura e os trechos que valem leitura
 estão no repositório irmão
-[`sofia-vitrine`](https://github.com/andrenv14/sofia-vitrine)) tem uma suíte
-Vitest em 47 arquivos que prova que o **encanamento** funciona: assinatura de webhook,
+[`sofia-vitrine`](https://github.com/andrenv14/sofia-vitrine)) tem 47 arquivos
+/ 694 testes em Vitest que provam que o **encanamento** funciona: assinatura de webhook,
 dedup por `wamid`, buffer de mensagens, limites do loop-guard, fila
 persistente. Em todos eles a LLM
 é **simulada** — o que está sob teste é o código em volta do modelo.
