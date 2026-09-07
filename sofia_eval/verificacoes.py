@@ -5,9 +5,23 @@ texto de LLM não tem igualdade, mas "a linha existe", "a duração é 60" e "o
 telefone confere" têm.
 """
 
+import time
 from zoneinfo import ZoneInfo
 
 from . import banco, datas
+
+# Janela de espera de `humano_pendente`, em segundos.
+#
+# A escrita de `contatos_estado` é a ÚLTIMA do turno e não tem nada depois
+# dela: `processarBuffer` (`src/server.js`) grava o status terminal de
+# `mensagens_pendentes` ANTES do `finally`, e é o `finally` que chama
+# `silenciarPorHandoff`. Ou seja: quando o eval acorda — que é no turno da
+# assistente aparecer em `messages`, ainda mais cedo — a linha pode não existir
+# ainda. A cauda é um upsert; localmente, milissegundos.
+#
+# Cinco segundos são ordens de grandeza acima da cauda medida, e o custo de
+# errar para mais é só tempo em cenário que espera `false`.
+ESPERA_HUMANO_S = 5.0
 
 
 def _checagem(chave, esperado, obtido, ok) -> dict:
@@ -18,6 +32,33 @@ def _checagem(chave, esperado, obtido, ok) -> dict:
     rastro nela. `checagens` traz as duas, e é o que o relatório HTML usa para
     mostrar cada verificação, não só as que falharam."""
     return {"chave": chave, "esperado": esperado, "obtido": obtido, "ok": ok}
+
+
+def _esperar_humano(conn, tenant_id: int, telefone: str) -> bool:
+    """Lê `humano_pendente` sondando até `ESPERA_HUMANO_S`.
+
+    A espera NÃO depende do que o cenário espera encontrar, e isso é
+    deliberado: uma sondagem que desistisse cedo quando espera `false` mediria
+    a própria expectativa. Aqui a janela é a mesma nos dois sentidos, e o
+    retorno antecipado acontece só quando a linha APARECE — nunca quando ela
+    falta.
+
+    As quatro combinações, e por que nenhuma mente:
+    - espera true, aparece  → volta cedo, PASSA;
+    - espera true, não aparece → volta false no fim da janela, REPROVA. Se a
+      janela for curta demais, o sintoma é VERMELHO VISÍVEL, não verde falso;
+    - espera false, não aparece → esperou a janela inteira antes de afirmar;
+    - espera false, aparece → volta cedo, REPROVA.
+
+    A assimetria é o ponto: janela curta demais nunca produz falso verde, só
+    falso vermelho — que alguém investiga."""
+    limite = time.monotonic() + ESPERA_HUMANO_S
+    while True:
+        if banco.humano_pendente(conn, tenant_id, telefone):
+            return True
+        if time.monotonic() >= limite:
+            return False
+        time.sleep(0.1)
 
 
 def aplicar(conn, tenant, cenario, ids_antes) -> tuple:
@@ -95,6 +136,21 @@ def aplicar(conn, tenant, cenario, ids_antes) -> tuple:
             falhas.append(
                 f"respostas_assistente_max: teto {v['respostas_assistente_max']}, obtido {obtido} "
                 "respostas da assistente (guarda de comportamento — desengajar)"
+            )
+
+    if "humano_pendente" in v:
+        esperado = v["humano_pendente"]
+        obtido = _esperar_humano(conn, tenant["id"], cenario.contato)
+        ok = esperado == obtido
+        checagens.append(_checagem("humano_pendente", esperado, obtido, ok))
+        if not ok:
+            falhas.append(
+                "humano_pendente: esperado que a ferramenta de atendente humano "
+                f"{'FOSSE' if esperado else 'NÃO fosse'} chamada, e "
+                f"`contatos_estado.humano_pendente_desde` "
+                f"{'não apareceu' if esperado else 'apareceu'} "
+                f"em {ESPERA_HUMANO_S:.0f}s"
+                + ("" if esperado else " — o modelo delegou quando devia atender")
             )
 
     if "agendamento_status" in v:

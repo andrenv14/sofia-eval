@@ -141,6 +141,43 @@ def custo(conn, tenant_id: int) -> dict:
     return {k: int(v) for k, v in linha.items()}
 
 
+def humano_pendente(conn, tenant_id: int, telefone: str) -> bool:
+    """A ferramenta de atendente humano foi chamada, e o efeito chegou ao banco.
+
+    Afere `contatos_estado.humano_pendente_desde IS NOT NULL` — e SÓ isso.
+    Deliberadamente NÃO afere `silenciado_ate` no futuro, por três razões:
+
+    1. `silenciado_ate` depende de `SILENCIO_DONO_MS_OVERRIDE`, que é lido uma
+       vez no carregamento do módulo do `sofia-bot` e vale para o processo
+       inteiro. Cenários que precisam do silêncio CURTO (para o turno seguinte
+       não ser engolido) e cenários que o querem LONGO (para o vê-lo no futuro)
+       se morderiam no mesmo servidor.
+    2. É a marca DURÁVEL. O silêncio é uma janela que passa por desenho; a
+       marca fica até alguém assumir. Afirmar sobre a janela é afirmar sobre o
+       relógio.
+    3. É o campo que o PAINEL lê (`marcaHumanoPendente`, `src/admin/panel.js`,
+       selo "pendente de humano"). A asserção passa a afirmar o efeito de
+       produto — "isto apareceu na fila do dono" — e não um detalhe do silêncio.
+
+    Continua a discriminar, porque as duas funções de silêncio fazem coisas
+    OPOSTAS com o campo: `silenciarPorHandoff` marca, `silenciarPorEcho` limpa
+    (o echo é a prova de que o dono assumiu). Cenário que confunda os dois
+    caminhos reprova.
+
+    SÓ existe linha em tenant com `coexistencia = true` — o guard está em três
+    camadas do `sofia-bot`, acima de `silenciarPorHandoff`. Cenário que afira
+    isto sem `tenant.coexistencia` dá falso vermelho."""
+    linha = conn.execute(
+        """
+        SELECT humano_pendente_desde IS NOT NULL AS pendente
+          FROM contatos_estado
+         WHERE tenant_id = %s AND contact_phone = %s
+        """,
+        (tenant_id, telefone),
+    ).fetchone()
+    return bool(linha["pendente"]) if linha else False
+
+
 def status_pendente(conn, wamid: str):
     linha = conn.execute(
         "SELECT status FROM mensagens_pendentes WHERE wamid = %s", (wamid,)

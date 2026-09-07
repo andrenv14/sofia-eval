@@ -20,6 +20,7 @@ Sai 0 se tudo passou, 1 se algo falhou.
 """
 
 import sys
+import time
 from datetime import timedelta
 from pathlib import Path
 
@@ -177,6 +178,85 @@ def _checar_coexistencia(conn, cfg) -> list:
     return casos
 
 
+def _checar_humano_pendente(conn, tenant, cfg, ids_antes) -> list:
+    """`humano_pendente` nos dois sentidos, mais o caso que DISCRIMINA e o que
+    prova que a sondagem sonda.
+
+    Passa por `verificacoes.aplicar`, e não pela consulta direta, porque o que
+    precisa de prova aqui é o CAMINHO inteiro — incluindo a espera. Uma
+    sondagem que na verdade lesse uma vez só passaria em três destes quatro
+    casos, e falharia exactamente no que interessa."""
+    casos = []
+    tid = tenant["id"]
+
+    def _estado(pendente: bool, silencio: bool = True):
+        """Escreve a linha de `contatos_estado` que o `sofia-bot` escreveria.
+
+        `pendente=True, silencio=True` é o que `silenciarPorHandoff` deixa;
+        `pendente=False, silencio=True` é o que `silenciarPorEcho` deixa, que é
+        o caso discriminante."""
+        conn.execute("DELETE FROM contatos_estado WHERE tenant_id = %s", (tid,))
+        conn.execute(
+            """
+            INSERT INTO contatos_estado (tenant_id, contact_phone, silenciado_ate,
+                                         humano_pendente_desde)
+            VALUES (%s, %s,
+                    CASE WHEN %s THEN now() + interval '15 minutes' END,
+                    CASE WHEN %s THEN now() END)
+            """,
+            (tid, CONTATO, silencio, pendente),
+        )
+
+    def _rodar(verifs):
+        falhas, _, _ = verificacoes.aplicar(conn, tenant, _cenario(verifs), ids_antes)
+        return bool(falhas), (falhas[0] if falhas else "")
+
+    _estado(pendente=True)
+    reprovou, motivo = _rodar({"humano_pendente": True})
+    casos.append((not reprovou, "humano_pendente: marca presente e esperada → passa", motivo))
+
+    reprovou, motivo = _rodar({"humano_pendente": False})
+    casos.append((reprovou, "humano_pendente: marca presente e NÃO esperada → acusa", motivo))
+
+    # O caso que DISCRIMINA os dois silêncios. `silenciarPorEcho` LIMPA
+    # `humano_pendente_desde` (o echo é a prova de que o dono assumiu) e mantém
+    # `silenciado_ate`. Se a chave aferisse silêncio em vez da marca, este caso
+    # passaria por engano — e o cenário confundiria "o dono assumiu" com "a
+    # Sofia delegou". Gasta a janela inteira de propósito.
+    _estado(pendente=False, silencio=True)
+    reprovou, motivo = _rodar({"humano_pendente": True})
+    casos.append((reprovou,
+                  "humano_pendente: silêncio SEM marca (echo do dono) NÃO conta como delegação",
+                  motivo))
+
+    # A sondagem sonda: a linha nasce DEPOIS de a verificação começar, como no
+    # servidor real, onde a escrita é a última coisa do turno. Uma leitura
+    # única devolveria false e reprovaria.
+    conn.execute("DELETE FROM contatos_estado WHERE tenant_id = %s", (tid,))
+    import threading, datetime as _dt
+
+    def _tardia():
+        time.sleep(0.6)
+        with banco.conectar(cfg.database_url) as outra:
+            outra.execute(
+                "INSERT INTO contatos_estado (tenant_id, contact_phone, silenciado_ate, "
+                "humano_pendente_desde) VALUES (%s, %s, %s, %s)",
+                (tid, CONTATO, _dt.datetime.now(_dt.timezone.utc),
+                 _dt.datetime.now(_dt.timezone.utc)),
+            )
+
+    th = threading.Thread(target=_tardia)
+    th.start()
+    reprovou, motivo = _rodar({"humano_pendente": True})
+    th.join()
+    casos.append((not reprovou,
+                  "humano_pendente: marca escrita TARDE é apanhada (a sondagem sonda)",
+                  motivo))
+
+    conn.execute("DELETE FROM contatos_estado WHERE tenant_id = %s", (tid,))
+    return casos
+
+
 def _checar_tetos(conn, tenant, ids_antes) -> list:
     """`chamadas_ia_max` e `tokens_prompt_max` nos DOIS sentidos.
 
@@ -299,6 +379,7 @@ def main() -> int:
             resultados.extend(_checar_degradados(conn, tenant))
             resultados.extend(_checar_degradados_por_texto(conn, tenant))
             resultados.extend(_checar_tetos(conn, tenant, ids_antes))
+            resultados.extend(_checar_humano_pendente(conn, tenant, cfg, ids_antes))
         finally:
             mod_tenant.limpar(conn)
 

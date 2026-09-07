@@ -139,6 +139,11 @@ VERIFICACOES = {
     # (ex.: cancelamento correto sem mexer no de terceiro) — a mesma
     # categoria de bug que `nome_profissional` e linha órfã, onde o total
     # batia e a linha errada é que estava errada.
+    # A ferramenta de atendente humano foi CHAMADA — aferido pelo efeito
+    # (`contatos_estado.humano_pendente_desde`), nunca pelo texto da resposta.
+    # Exige `tenant.coexistencia: true`; sem ela a linha nunca é escrita e a
+    # asserção dá falso vermelho. Ver `banco.humano_pendente`.
+    "humano_pendente": (bool, False),
     "agendamento_status": (list, False),
 }
 
