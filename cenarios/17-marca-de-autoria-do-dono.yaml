@@ -139,7 +139,8 @@ verificacoes:
   # teto medido contra o mesmo prompt e o mesmo SHA — comparar cenários com
   # tetos de bases diferentes é o que torna a folga difícil de ler.
   #
-  # As três passadas correram com um `phone_number_id` por cenário (a224ad7).
+  # As três passadas correram com um `phone_number_id` por cenário
+  # (`tenant.phone_number_id_do_cenario`).
   # A folga de 100% existe porque a variação natural é de ±1 chamada e o
   # teto tem de pegar CURVA (o incidente foi 61 chamadas / 530.575 tokens).
   chamadas_ia_max: 10

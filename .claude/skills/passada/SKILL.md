@@ -182,9 +182,9 @@ foi medido. Título de commit é intenção declarada; hash é o que está lá.
 fica registrada.** Turno degradado é a assinatura `chamadas_ia > 0` com
 `prompt_tokens = 0`: o modelo não respondeu (429 — ver passo 2), a chamada foi
 contada e nenhum token de prompt somou. Confira **por linha, nunca pela soma**:
-cenário com turnos bons e degradados misturados escapa do agregado. Desde
-`eefc598` o eval detecta a assinatura sozinho e o cenário sai **ERRO** antes de
-qualquer verificação rodar — a regra existe para o que vem DEPOIS disso: três
+cenário com turnos bons e degradados misturados escapa do agregado. O eval
+detecta a assinatura sozinho (`banco.turnos_degradados`) e o cenário sai
+**ERRO** antes de qualquer verificação rodar — a regra existe para o que vem DEPOIS disso: três
 passadas com uma degradada no meio dão um teto envenenado sem ninguém notar.
 
 **São DOIS detectores, e um não substitui o outro** — porque a assinatura
@@ -425,7 +425,7 @@ coisa: não era só apertar a guarda, era repor margem que já tinha sumido.**
 
 Medida a v1 (cenários 01–06) contra a main de então, `79c0715`, sob
 `google/gemini-3.7-flash`, 3 passadas, com `phone_number_id` por cenário
-(`a224ad7`) — a primeira medição limpa que esses cenários tiveram, porque todas
+(`tenant.phone_number_id_do_cenario`) — a primeira medição limpa que esses cenários tiveram, porque todas
 as anteriores correram com um id só para todos e o `sofia-bot` servia o tenant
 de cache por 30s entre cenários. 18/18 PASSOU, zero degradadas.
 

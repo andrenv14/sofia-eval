@@ -37,7 +37,8 @@ verificacoes:
   # A `prompt-condicional` devolveu a folga, e estes números nascem contra
   # o prompt que FICA, não contra o que saiu.
   #
-  # As três passadas correram com um `phone_number_id` por cenário (a224ad7).
+  # As três passadas correram com um `phone_number_id` por cenário
+  # (`tenant.phone_number_id_do_cenario`).
   # As calibrações anteriores a 07/09 correram com um id só para todos, e o
   # sofia-bot servia o tenant de cache por 30s entre cenários — por isso a
   # medição de 79c0715 acima é a primeira limpa que este cenário teve.
