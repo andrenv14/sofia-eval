@@ -343,6 +343,71 @@ def _checar_tetos(conn, tenant, ids_antes) -> list:
 
 
 # (descrição, verificacoes, espera_reprovar)
+def _checar_falas_do_dono(conn, tenant) -> list:
+    """A barreira do turno `dono:` nos dois sentidos, e o quase-acerto.
+
+    Não é uma chave de `verificacoes` — é a espera de `enviar_echo_do_dono`
+    (`turnos.py`), e por isso não passa por `verificacoes.aplicar`. Mas erra
+    do mesmo jeito silencioso: barreira que nunca casa não dá veredito errado,
+    dá ERRO por timeout num cenário que mede outra coisa. Foi o que a
+    igualdade exacta fazia contra a fatia `fala-do-dono-completa`, que grava a
+    fala do dono com o prefixo de autoria.
+
+    Os dois sentidos aqui são as duas FORMAS da linha — com prefixo (branch) e
+    sem (main): as duas têm de parar a espera, porque o que a barreira afere é
+    que o echo foi processado, não como ele ficou escrito. O quase-acerto é o
+    que impede "contém" de virar "casa qualquer coisa": texto DIFERENTE não
+    conta. Sem ele, a barreira passaria a devolver verdadeiro para a primeira
+    linha da assistente que aparecesse, e voltaria a parar cedo demais — o
+    defeito que `silenciarPorEcho` já tinha produzido uma vez."""
+    TEXTO = "oi Helena, consigo te encaixar depois de amanhã às 10h, pode ser?"
+    # PREFIXO GENÉRICO DE PROPÓSITO — não é a marca real do `sofia-bot`, e não
+    # deve ser trocado por ela. O que estes casos provam é a semântica de
+    # "contém": que um prefixo QUALQUER antes do texto não estoura a barreira.
+    # Qualquer prefixo prova isso com a mesma força, então usar o real não
+    # acrescentaria poder de teste — só publicaria o valor.
+    #
+    # E publicá-lo custa: a marca real é constante de produção
+    # (`MARCA_ATENDIMENTO`, src/coex/marcaAtendimento.js) de um repositório
+    # PRIVADO, e este aqui é PÚBLICO — o mesmo motivo que põe
+    # `.claude/settings.local.json` no `.gitignore`. Quem soubesse a string
+    # exata poderia escrevê-la para se fazer passar por equipe da clínica.
+    # `systemPrompt.js` já guarda esse caso do lado do cliente ("se o CLIENTE
+    # escrever essa mesma frase [...] não significa nada"), e a mensagem dele
+    # entra com `role = 'user'`, que é separação estrutural. Mas a camada de
+    # cima disso é instrução de prompt, e não há por que baratear a tentativa.
+    PREFIXO = "[prefixo de autoria do autoteste] "
+    casos = []
+
+    formas = (
+        (f"{PREFIXO}{TEXTO}", "assistant", 1, "com prefixo de autoria (forma da branch)"),
+        (TEXTO, "assistant", 1, "sem prefixo, texto cru (forma da main)"),
+        ("oi Helena, consigo te encaixar amanhã às 10h, pode ser?", "assistant", 0,
+         "texto DIFERENTE não conta (barreira não é 'casa qualquer coisa')"),
+        (f"{PREFIXO}{TEXTO}", "user", 0,
+         "mesma linha como `user` não conta (o filtro por role continua)"),
+    )
+    for content, role, esperado, descricao in formas:
+        conn.execute(
+            "DELETE FROM messages WHERE tenant_id = %s AND contact_phone = %s",
+            (tenant["id"], TERCEIRO),
+        )
+        conn.execute(
+            "INSERT INTO messages (tenant_id, contact_phone, role, content) VALUES (%s, %s, %s, %s)",
+            (tenant["id"], TERCEIRO, role, content),
+        )
+        obtido = banco.falas_do_dono(conn, tenant["id"], TERCEIRO, TEXTO)
+        ok = obtido == esperado
+        casos.append((ok, f"falas_do_dono: {descricao}",
+                      "" if ok else f"esperado {esperado}, obtido {obtido}"))
+
+    conn.execute(
+        "DELETE FROM messages WHERE tenant_id = %s AND contact_phone = %s",
+        (tenant["id"], TERCEIRO),
+    )
+    return casos
+
+
 CASOS = (
     ("agendamentos: conta só os ativos", {"agendamentos": 1}, False),
     ("agendamentos: acusa contagem errada", {"agendamentos": 2}, True),
@@ -423,6 +488,7 @@ def main() -> int:
             resultados.extend(_checar_tetos(conn, tenant, ids_antes))
             resultados.extend(_checar_humano_pendente(conn, tenant, cfg, ids_antes))
             resultados.extend(_checar_status_terminais(conn, tenant))
+            resultados.extend(_checar_falas_do_dono(conn, tenant))
         finally:
             mod_tenant.limpar(conn)
 

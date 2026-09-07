@@ -179,7 +179,7 @@ def humano_pendente(conn, tenant_id: int, telefone: str) -> bool:
 
 
 def falas_do_dono(conn, tenant_id: int, telefone: str, texto: str) -> int:
-    """Quantas vezes ESTE texto do dono já está no histórico do contacto.
+    """Quantas linhas do histórico do contacto CONTÊM este texto do dono.
 
     Desde a fatia `fala-do-dono` (`d1b631c`), `registrarFalaDoDono`
     (`src/session/sessionStore.js`) grava a fala do dono em `messages` com
@@ -189,12 +189,33 @@ def falas_do_dono(conn, tenant_id: int, telefone: str, texto: str) -> int:
 
     É a ÚLTIMA escrita do laço do echo (`silenciarPorEcho` vem antes), o que a
     torna a barreira certa para saber que o echo foi processado. Não há turno
-    da assistente para esperar: echo não é mensagem de cliente."""
+    da assistente para esperar: echo não é mensagem de cliente.
+
+    CONTÉM, E NÃO IGUAL — mudado em 07/09, e a igualdade estourava a barreira.
+    A fatia `fala-do-dono-completa` acrescenta ao `content` um prefixo de
+    autoria — `MARCA_ATENDIMENTO` mais um espaço, aplicado por
+    `comMarcaDeAtendimento` (src/coex/marcaAtendimento.js) — antes do texto
+    cru do dono. O VALOR da constante não se escreve aqui de propósito: é de
+    um repositório privado e este é público (ver o comentário de
+    `_checar_falas_do_dono` no autoteste). O nome basta a quem tem acesso, e
+    esta função não depende do valor. Contra essa
+    branch, `content = texto` nunca casa: a barreira espera até o timeout e
+    TODO cenário com turno `dono:` sai ERRO por algo que ele não mede. A
+    barreira afere que o echo FOI PROCESSADO, não a forma da linha — e a forma
+    é justamente o que o cenário 17 se proibiu de afirmar. Com "contém" ela
+    funciona contra as duas formas, que é o que uma barreira deve fazer: a
+    `main` grava o texto cru, a branch grava com prefixo, e as duas param a
+    espera no mesmo instante.
+
+    `position(%s in content) > 0` e não `LIKE`: `position` casa a string
+    LITERAL. Num `LIKE`, um `%` ou `_` dentro da fala do dono viraria
+    curinga — e a fala do dono é texto de cenário, que muda sem que ninguém
+    lembre desta função."""
     linha = conn.execute(
         """
         SELECT count(*) AS n FROM messages
          WHERE tenant_id = %s AND contact_phone = %s
-           AND role = 'assistant' AND content = %s
+           AND role = 'assistant' AND position(%s in content) > 0
         """,
         (tenant_id, telefone, texto),
     ).fetchone()
