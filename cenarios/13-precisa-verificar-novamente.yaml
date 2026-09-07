@@ -42,10 +42,22 @@ turnos:
 verificacoes:
   agendamentos: 1              # só o do Vinícius continua
   sem_agendamento_novo: true
-  # Tetos = 2 × o máximo medido em 3 passadas (2026-09-05,
-  # google/gemini-3.7-flash, contra sofia-bot 45dc8e8): chamadas 4/4/4, tokens de prompt
-  # 17.206/16.847/17.069. Máximos: 4 e 17.206.
+  # Tetos = 2 × o máximo medido em 3 passadas (2026-09-07,
+  # google/gemini-3.7-flash, contra sofia-bot 0dc1e37 — a main com a
+  # `prompt-condicional` em produção; `src/` é byte a byte igual ao
+  # 1cfc2ee do merge, conferido por hash): chamadas 4/4/4, tokens de
+  # prompt 12.498/12.552/12.865. Máximos: 4 e 12.865.
+  #
+  # RECALIBRADO contra o prompt novo, e SEM urgência — ao contrário dos
+  # seis da v1. O teto anterior (34.412) dava folga de 2,67× contra este
+  # mesmo prompt, acima dos 2× exigidos: a guarda estava inteira. Os dez
+  # cenários de 05-07/09 estavam todos entre 2,08× e 2,87×; os da v1, cinco
+  # dos seis abaixo de 2×. Entraram juntos para a suíte inteira passar a ter
+  # teto medido contra o mesmo prompt e o mesmo SHA — comparar cenários com
+  # tetos de bases diferentes é o que torna a folga difícil de ler.
+  #
+  # As três passadas correram com um `phone_number_id` por cenário (a224ad7).
   # A folga de 100% existe porque a variação natural é de ±1 chamada e o
   # teto tem de pegar CURVA (o incidente foi 61 chamadas / 530.575 tokens).
   chamadas_ia_max: 8
-  tokens_prompt_max: 34412
+  tokens_prompt_max: 25730

@@ -475,7 +475,23 @@ calibrações ANTIGAS (agosto e 05–07/09, várias delas contaminadas pelo cach
 enquanto esta compara duas medições limpas feitas com horas de diferença. É a
 mesma fatia; o que muda é a qualidade do "antes".
 
-**O que fica por fazer, e é fatia própria:** os outros dez cenários continuam
-com tetos de 05–07/09, calibrados contra o prompt velho e alguns deles em
-rodadas dentro da janela do cache. Eles têm folga hoje, mas a folga não foi
-medida contra `1cfc2ee`. Quando alguém for lá, o comando é o mesmo desta fatia.
+**Os outros dez entraram no mesmo dia**, contra `0dc1e37` (a main em produção;
+`src/` byte a byte igual a `1cfc2ee`, conferido por hash). 3 passadas, mesmo
+modelo, mesmos ids: 30/30 PASSOU, zero degradadas.
+
+Eles NÃO tinham a urgência da v1, e a diferença é o que torna a distinção útil:
+medida contra o prompt novo, a folga dos tetos antigos deles ia de **2,08× a
+2,87×** — todos acima dos 2× exigidos, guarda inteira. Entraram junto para a
+suíte passar a ter teto medido contra o mesmo prompt e o mesmo SHA; comparar
+cenários com tetos de bases diferentes é o que torna a folga difícil de ler.
+
+**A suíte inteira está calibrada contra o prompt que está no ar**, e é a
+primeira vez que isso acontece: os 16 tetos somam 975.438 tokens de prompt,
+todos de 07/09, todos sob `google/gemini-3.7-flash`, todos com
+`phone_number_id` por cenário.
+
+Dois cenários tiveram o teto de CHAMADAS a subir, e não é regressão de custo —
+é dispersão que a calibração anterior não tinha visto: `agenda-unica-um-por-vez`
+14 → 16 (8/7/8 chamadas) e `marca-de-autoria-do-dono` 8 → 10 (4/5/5). Nos dois o
+teto de TOKENS caiu na mesma passada. Quem for ler um estouro de chamadas nesses
+dois começa por aqui.
