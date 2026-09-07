@@ -1,0 +1,62 @@
+From 25048e19c397600f64f9139f098da12f7fe4c93b Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andr=C3=A9?= <andre@riachotech.com.br>
+Date: Mon, 7 Sep 2026 19:57:53 +0000
+Subject: [PATCH] perfil: o que a plataforma faz, o riachotech-site na lista, e
+ sem emoji de titulo
+
+Coexistence e a avaliacao por efeito no banco entram porque sao o que
+distingue o trabalho; os emojis de secao saem porque sao o tique que faz
+um perfil parecer gerado.
+---
+ readme.md | 16 +++++++++++-----
+ 1 file changed, 11 insertions(+), 5 deletions(-)
+
+diff --git a/readme.md b/readme.md
+index d1ba577..ab9f7e6 100644
+--- a/readme.md
++++ b/readme.md
+@@ -7,22 +7,25 @@
+ <p align="center">
+   <a href="https://www.linkedin.com/in/andrenv14/"><img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white" alt="LinkedIn"></a>
+   <a href="https://riachotech.com.br/"><img src="https://img.shields.io/badge/Riacho_Tech-1a1a1a?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Riacho Tech"></a>
+-  <a href="mailto:andrevc.006@gmail.com"><img src="https://img.shields.io/badge/E--mail-D14836?style=for-the-badge&logo=gmail&logoColor=white" alt="E-mail"></a>
++  <a href="https://www.instagram.com/riacho_tech/"><img src="https://img.shields.io/badge/Instagram-E4405F?style=for-the-badge&logo=instagram&logoColor=white" alt="Instagram"></a>
++  <a href="mailto:andrevc.600@gmail.com"><img src="https://img.shields.io/badge/E--mail-D14836?style=for-the-badge&logo=gmail&logoColor=white" alt="E-mail"></a>
+ </p>
+ 
+ ---
+ 
+ Desenvolvedor em Brasília. Construo sistemas que integram modelos de linguagem a operações reais de negócio — não protótipos, mas coisas que precisam ficar de pé.
+ 
+-Fundei a **[Riacho Tech](https://riachotech.com.br/)**, onde desenvolvi uma assistente de IA multi-tenant que atende pelo WhatsApp com a API oficial da Meta, agenda em calendário real e cobra por Pix. Do zero: arquitetura, código, infraestrutura e operação.
++Fundei a **[Riacho Tech](https://riachotech.com.br/)**, onde desenvolvi e opero uma assistente de IA multi-tenant que atende pelo WhatsApp com a API oficial da Meta: ela conversa, consulta a agenda real no Google Calendar, marca e cancela horários e cobra por Pix. Está em produção desde agosto de 2026, numa VPS própria, atendendo negócio real. Do zero: arquitetura, código, infraestrutura e operação.
+ 
+-### 🛠 Stack
++Duas partes dela dizem melhor o tipo de problema que me interessa. Uma é o modo **Coexistence** da plataforma da Meta: a dona da clínica continua respondendo pelo aplicativo dela e a assistente responde no mesmo número — duas vozes do mesmo lado da conversa, e o sistema precisa saber de quem é cada linha antes de decidir se pode agendar. A outra é como se verifica uma coisa dessas: resposta de modelo não tem igualdade, então a avaliação julga pelo efeito no banco em vez do texto, e cada cenário carrega um teto de custo medido — 2× o máximo observado em execuções repetidas, não um número escolhido no olho.
++
++### Stack
+ 
+ <p>
+   <img src="https://skillicons.dev/icons?i=nodejs,express,postgres,ts,js,react,python,linux,nginx,git" alt="Stack">
+ </p>
+ 
+-### 📌 Repositórios
++### Repositórios
+ 
+ **[sofia-vitrine](https://github.com/andrenv14/sofia-vitrine)**
+ Estudo de caso técnico da plataforma acima: arquitetura, decisões de projeto e os trechos de código que as sustentam. O código de produção é privado — este repositório é de leitura.
+@@ -30,7 +33,10 @@ Estudo de caso técnico da plataforma acima: arquitetura, decisões de projeto e
+ **[sofia-eval](https://github.com/andrenv14/sofia-eval)**
+ Avaliação de comportamento de LLM para a plataforma acima. Testa a decisão do modelo, não o código: ataca o sistema por HTTP e julga pelo efeito no banco. Cenários em YAML, Python.
+ 
+-### 🎓 Formação
++**[riachotech-site](https://github.com/andrenv14/riachotech-site)**
++O site da Riacho Tech e o processo por trás dele: sistema de design extraído do CSS em vez de imaginado, medição de contraste, tipografia e deslocamento de layout em três larguras, e a prova de que um restyle não mexeu numa palavra do conteúdo.
++
++### Formação
+ 
+ Engenharia de Software e Ciências Econômicas — Universidade Católica de Brasília.
+ Inglês fluente · Espanhol intermediário.
+-- 
+2.34.1
+
