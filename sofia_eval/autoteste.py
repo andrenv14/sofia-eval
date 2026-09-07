@@ -24,7 +24,7 @@ import time
 from datetime import timedelta
 from pathlib import Path
 
-from . import banco, cenario as mod_cenario, config, datas, relatorio, tenant as mod_tenant, verificacoes
+from . import banco, cenario as mod_cenario, config, datas, relatorio, tenant as mod_tenant, turnos, verificacoes
 
 CONTATO = "5511999990100"
 TERCEIRO = "5511999990200"
@@ -175,6 +175,48 @@ def _checar_coexistencia(conn, cfg) -> list:
                   "" if tenant["coexistencia"] is True else f"obtive {tenant['coexistencia']!r}"))
 
     mod_tenant.limpar(conn)
+    return casos
+
+
+def _checar_status_terminais(conn, tenant) -> list:
+    """Quais estados de `mensagens_pendentes` contam como TERMINAIS.
+
+    Existe porque a classificação estava errada e o erro era invisível:
+    `turnos.FINAIS` conhecia só `('concluida', 'erro')`, e `'nao_enviada'`
+    ficava de fora. Ele é gravado em SEIS pontos de `processarBuffer` — gate do
+    silêncio, corte do loop-guard, e cada bloqueio da arbitragem de envio — e o
+    `sofia-bot` documenta-o como terminal de propósito.
+
+    O sintoma da falta não era veredito errado: era o eval ESPERAR até o
+    timeout por um estado que nunca mais mudaria, e o cenário sair ERRO por
+    algo que ele não mede. Uma espera que não sabe quando parar é irmã da
+    verificação que não sabe falhar.
+
+    Este caso não testa a leitura (que é trivial) — testa a CLASSIFICAÇÃO, que
+    é onde o defeito morava."""
+    casos = []
+    esperado_terminal = {
+        "pendente": False,
+        "processando": False,
+        "concluida": True,
+        "erro": True,
+        "nao_enviada": True,
+    }
+    for status, terminal in esperado_terminal.items():
+        wamid = f"wamid.autoteste.{status}"
+        conn.execute("DELETE FROM mensagens_pendentes WHERE wamid = %s", (wamid,))
+        conn.execute(
+            "INSERT INTO mensagens_pendentes (tenant_id, contact_phone, texto, wamid, status) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            (tenant["id"], CONTATO, "texto do autoteste", wamid, status),
+        )
+        lido = banco.status_pendente(conn, wamid)
+        ok = lido == status and (lido in turnos.FINAIS) is terminal
+        casos.append((ok,
+                      f"status '{status}': {'terminal' if terminal else 'NÃO terminal'} "
+                      f"— o eval {'para de esperar' if terminal else 'continua a esperar'}",
+                      "" if ok else f"lido {lido!r}, em FINAIS={lido in turnos.FINAIS}"))
+        conn.execute("DELETE FROM mensagens_pendentes WHERE wamid = %s", (wamid,))
     return casos
 
 
@@ -380,6 +422,7 @@ def main() -> int:
             resultados.extend(_checar_degradados_por_texto(conn, tenant))
             resultados.extend(_checar_tetos(conn, tenant, ids_antes))
             resultados.extend(_checar_humano_pendente(conn, tenant, cfg, ids_antes))
+            resultados.extend(_checar_status_terminais(conn, tenant))
         finally:
             mod_tenant.limpar(conn)
 

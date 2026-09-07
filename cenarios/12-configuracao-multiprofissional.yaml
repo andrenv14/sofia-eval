@@ -127,18 +127,22 @@ tenant:
         - { dia_semana: 1, hora_inicio: "08:30", hora_fim: "11:30" }
 
 turnos:
-  # O nome vem no primeiro turno de propósito, para a conversa não gastar um
-  # turno inteiro só a colhê-lo. O pedido NÃO diz "com quem" nem cita a linha:
-  # dizer "quero marcar na Endodontia" tornaria o roteamento trivial e o
-  # cenário deixaria de medir o que afirma medir.
-  - "oi, meu nome é Marcos Vieira e eu preciso fazer um canal"
-  # Nomeia a hora de propósito. A primeira tentativa dizia "pode confirmar esse
-  # horário" e o cenário reprovou sem medir nada: a Sofia tinha oferecido TRÊS
-  # (08h30, 09h30, 10h30 — os três slots de 60 min da janela da Endodontia) e
-  # esperava uma escolha. O roteamento já estava certo ali; o roteiro é que
-  # era curto. 08h30 é determinístico: é sempre o primeiro slot da janela, em
-  # qualquer segunda, com o dia livre.
-  - "pode ser às 8h30 então"
+  # O turno 1 fecha TODAS as lacunas de propósito: nome, serviço e "o primeiro
+  # horário que tiver". Isso não é conveniência — é o que torna o cenário
+  # determinístico, e custou duas passadas para eu perceber.
+  #
+  # A versão anterior dizia só "preciso fazer um canal" e reprovou em 2 de 3
+  # passadas, sempre do mesmo jeito: o modelo é LIVRE de escolher entre
+  # oferecer horários e perguntar o dia primeiro. Quando ofereceu, o roteiro
+  # de dois turnos funcionou; quando perguntou "qual dia você prefere?", o
+  # turno 2 respondia uma hora sem responder o dia, e a conversa acabava sem
+  # agendamento. Reprovava por roteiro curto, não por comportamento.
+  #
+  # "O primeiro horário que tiver" também evita nomear o dia, o que seria
+  # frágil por outro motivo: a Endodontia só atende segundas, e o cenário tem
+  # de rodar em qualquer dia da semana.
+  - "oi, meu nome é Marcos Vieira, preciso fazer um canal. pode ser no primeiro horário que vocês tiverem"
+  - "isso mesmo, pode confirmar"
 
 verificacoes:
   # A DURAÇÃO é a asserção, e é ela que separa as duas linhas: 60 é
@@ -149,6 +153,12 @@ verificacoes:
   agendamento:
     duracao_minutos: 60
     profissional: Endodontia
-  # Tetos de custo ainda NÃO medidos — pendente 3 passadas sob o modelo
-  # declarado. O cenário mudou de forma em 06/09 e os tetos da versão
-  # anterior (18 / 76.428) não valem para ele: mediam outra conversa.
+  # Tetos = 2 × o máximo medido em 3 passadas (2026-09-06,
+  # google/gemini-3.7-flash, contra sofia-bot 1592748): chamadas 6/6/7, tokens
+  # de prompt 27.009/27.200/31.729. Máximos: 7 e 31.729.
+  # Os tetos da versão ANTERIOR deste cenário (18 / 76.428) não valem — mediam
+  # outra conversa, com quatro profissionais e outro roteiro.
+  # A folga de 100% existe porque a variação natural é de ±1 chamada e o
+  # teto tem de pegar CURVA (o incidente foi 61 chamadas / 530.575 tokens).
+  chamadas_ia_max: 14
+  tokens_prompt_max: 63458

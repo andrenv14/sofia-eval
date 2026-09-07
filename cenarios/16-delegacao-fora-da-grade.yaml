@@ -108,5 +108,12 @@ verificacoes:
   humano_pendente: true
   agendamentos: 0
   sem_agendamento_novo: true
-  # Tetos de custo ainda NÃO medidos — pendente 3 passadas sob o modelo
-  # declarado. Cenário novo de 06/09.
+  # Tetos = 2 × o máximo medido em 3 passadas (2026-09-06,
+  # google/gemini-3.7-flash, contra sofia-bot 1592748): chamadas 2/2/2, tokens
+  # de prompt 8.826/8.860/8.819. Máximos: 2 e 8.860.
+  # É o cenário mais barato do repositório, e a variação entre passadas foi de
+  # 41 tokens — um turno só, sem espaço para o modelo divagar.
+  # A folga de 100% existe porque a variação natural é de ±1 chamada e o
+  # teto tem de pegar CURVA (o incidente foi 61 chamadas / 530.575 tokens).
+  chamadas_ia_max: 4
+  tokens_prompt_max: 17720

@@ -20,7 +20,20 @@ import uuid
 
 from . import banco
 
-FINAIS = ("concluida", "erro")
+# Os TRÊS estados terminais de `mensagens_pendentes`, não dois.
+#
+# `'nao_enviada'` faltava aqui até 07/09, e a falta tinha consequência: ele é
+# gravado em SEIS pontos de `processarBuffer` (`src/server.js`) — gate do
+# silêncio, corte do loop-guard, e cada bloqueio da arbitragem de envio — e o
+# próprio código o documenta como terminal ("'nao_enviada' é terminal DE
+# PROPÓSITO (P4)"), com a limpeza de 7 dias a tratá-lo junto de `'concluida'`.
+#
+# Sem ele, um cenário em que o loop-guard corta — o que acontece quando a Sofia
+# repete a mesma resposta quatro vezes, que é exactamente o que o fallback "deu
+# uma travada" produz quando as iterações esgotam — esperava até o timeout e
+# saía ERRO por algo que o cenário não mede. Medido em produção em 07/09:
+# "esgotou 5 iterações" ×4 → loop-guard pausou 60 min.
+FINAIS = ("concluida", "erro", "nao_enviada")
 
 
 class TurnoNaoProcessou(Exception):
