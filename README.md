@@ -18,8 +18,8 @@ arquitetura da assistente; este mostra como eu provo que ela decide certo.
 
 ## 1. O que ele pega
 
-O `sofia-bot` tem 694 testes em Vitest contra um Postgres real, e todos
-simulam o modelo: eles provam o encanamento em volta dele, não a decisão dele.
+O `sofia-bot` tem mais de 700 testes em Vitest contra um Postgres real, e
+todos simulam o modelo: eles provam o encanamento em volta dele, não a decisão dele.
 
 O eval cobre a outra metade: o que o modelo decide. Cada cenário nasce de um
 caso real.
@@ -76,8 +76,9 @@ nenhuma.
 
 ## 3. A prova
 
-São 16 cenários, todos com teto de custo medido, recalibrados em 07/09/2026
-contra o commit que estava em produção, sob `google/gemini-3.7-flash`. As 48
+São 16 cenários, todos com teto de custo medido, recalibrados contra o commit
+que estava em produção, sob `google/gemini-3.7-flash` — e é o modelo, não a
+data, que diz se um teto ainda vale. As 48
 passadas da recalibração correram sem uma degradação, e os 16 tetos somam
 975.438 tokens de prompt. Os três números de cada medição ficam no comentário
 ao lado do teto, no YAML.
@@ -130,9 +131,9 @@ explícita.
 FINAIS = ("concluida", "erro", "nao_enviada")
 ```
 
-Os três vêm de leitura do servidor. `'nao_enviada'` é gravado em seis pontos
-diferentes do processamento, e um cenário que a ignore espera por um estado
-que nunca vem.
+Os três vêm de leitura do servidor. `'nao_enviada'` é gravado em todo ponto onde o
+silêncio do dono ou uma falha impede a resposta de sair, e um cenário que a
+ignore espera por um estado que nunca vem.
 
 ### De onde vem cada teto
 
