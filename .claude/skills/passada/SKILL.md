@@ -74,7 +74,8 @@ cd ~/sofia-bot && OPENROUTER_MODEL=<modelo> npm start
 `- dono: "..."` injeta um echo, e o echo silencia o contacto por
 `SILENCIO_DONO_MS_OVERRIDE` — que é lido UMA vez no arranque do módulo
 (`src/coex/silencio.js`) e vale para o processo inteiro. O valor por omissão é
-15 MINUTOS, e nenhum cenário espera isso:
+de HORAS — o número exato se lê na constante daquele arquivo, e já mudou uma vez
+— e nenhum cenário espera isso:
 
 ```bash
 cd ~/sofia-bot && SILENCIO_DONO_MS_OVERRIDE=1500 \

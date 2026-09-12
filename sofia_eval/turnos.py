@@ -108,7 +108,7 @@ def esperar_silencio_passar(conn, cfg, tenant_id: int, telefone: str) -> None:
     raise TurnoNaoProcessou(
         f"o silêncio do dono não expirou em {cfg.timeout_turno_s:.0f}s. Suba o "
         "servidor com `SILENCIO_DONO_MS_OVERRIDE` pequeno (a suíte do sofia-bot "
-        "usa 1500); o valor por omissão é de 15 minutos e nenhum cenário espera isso."
+        "usa 1500); o valor por omissão é de HORAS e nenhum cenário espera isso."
     )
 
 
